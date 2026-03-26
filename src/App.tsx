@@ -10,66 +10,59 @@ import {
   ArrowLeft,
   ArrowRight,
   Tag,
-  Maximize2,
+  Eye,
+  EyeOff,
   Search,
   Filter,
   Shuffle,
   Edit3,
   Check,
-  RotateCcw
+  RotateCcw,
+  User as UserIcon,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  db, 
-  auth,
-  OperationType, 
-  handleFirestoreError 
-} from './firebase';
-import { 
-  onAuthStateChanged,
-  User 
-} from 'firebase/auth';
-import { 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  where,
-  orderBy, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp,
-  getDocs,
-  updateDoc
-} from 'firebase/firestore';
+import { supabase } from './supabase';
+import { User } from '@supabase/supabase-js';
 
 // --- Types ---
 type MasteryLevel = 'New' | 'Learning' | 'Review' | 'Mastered';
+type SortCriteria = 'created_at' | 'mastery_level' | 'alphabetical';
 
 interface Subject {
   id: string;
   name: string;
-  createdAt: any;
+  created_at: string;
 }
 
 interface Deck {
   id: string;
   name: string;
-  subjectId: string;
-  createdAt: any;
+  subject_id: string;
+  created_at: string;
 }
 
 interface Flashcard {
   id: string;
   front: string; // Question
   back: string;  // Answer
-  deckId: string;
-  subjectId: string;
+  deck_id: string;
+  subject_id: string;
   tags?: string[];
-  masteryLevel: MasteryLevel;
-  lastReviewed?: any;
-  nextReviewDate?: any;
-  createdAt: any;
+  mastery_level: MasteryLevel;
+  last_reviewed?: string;
+  next_review_date?: string;
+  created_at: string;
+}
+
+interface Profile {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
 }
 
 // --- Components ---
@@ -99,25 +92,40 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   if (hasError) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="notion-card bg-white p-8 max-w-2xl w-full">
-          <div className="flex items-center gap-3 text-black mb-4">
-            <XCircle size={32} />
-            <h1 className="text-2xl font-bold">Something went wrong</h1>
+      <div className="min-h-screen bg-[#f7f6f3] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="notion-card bg-white p-10 max-w-2xl w-full shadow-2xl border-red-100"
+        >
+          <div className="flex flex-col items-center gap-6 text-center">
+            <div className="p-4 bg-red-50 rounded-full text-red-600">
+              <XCircle size={48} />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold text-[#37352f]">Sync Error</h1>
+              <p className="text-gray-500 text-sm max-w-md">
+                We encountered a problem while communicating with the database. This might be due to a temporary connection issue or permission restrictions.
+              </p>
+            </div>
+            
+            <div className="w-full bg-gray-50 rounded-xl p-6 border border-gray-100 text-left">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Technical Details</p>
+              <div className="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap break-all leading-relaxed">
+                  {errorInfo}
+                </pre>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full notion-pill bg-[#37352f] text-white font-bold py-4 hover:bg-black transition-all shadow-xl shadow-black/10"
+            >
+              Reload Application
+            </button>
           </div>
-          <p className="text-gray-600 mb-6">
-            A database error occurred. This is likely due to missing permissions or an invalid operation.
-          </p>
-          <pre className="bg-[#f7f6f3] p-4 rounded-lg overflow-auto max-h-64 text-sm font-mono border border-gray-200">
-            {errorInfo}
-          </pre>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-6 w-full notion-pill font-bold hover:bg-[#ff6b00] hover:text-white transition-colors"
-          >
-            Reload Application
-          </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -127,6 +135,7 @@ const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -137,6 +146,7 @@ export default function App() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<SortCriteria>('created_at');
 
   // Study session state
   const [studyCards, setStudyCards] = useState<Flashcard[]>([]);
@@ -153,8 +163,17 @@ export default function App() {
   const [isAddingDeck, setIsAddingDeck] = useState(false);
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isCreatingCard, setIsCreatingCard] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [detailCard, setDetailCard] = useState<Flashcard | null>(null);
+
+  // Auth form states
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Custom alert/confirm states
   const [alertModal, setAlertModal] = useState<{ title: string; message: string } | null>(null);
@@ -162,80 +181,231 @@ export default function App() {
 
   // Auth listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setLoading(false);
     });
-    return unsubscribe;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch profile when user changes
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    } else {
+      setProfile(null);
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const handleUpdateProfile = async (updates: Partial<Profile>) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setAlertModal({ title: "Success", message: "Profile updated successfully!" });
+    } catch (error: any) {
+      setAlertModal({ title: "Error", message: error.message });
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setIsAuthenticating(true);
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setAlertModal({ title: "Check your email", message: "We've sent you a verification link. Please check your inbox." });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      setAuthError(error.message);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
 
   // Fetch Subjects
   useEffect(() => {
-    const q = query(collection(db, 'subjects'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subject));
+    if (!user) {
+      setSubjects([]);
+      return;
+    }
+
+    const fetchSubjects = async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching subjects:', error);
+        return;
+      }
+      
+      const list = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        created_at: item.created_at,
+        user_id: item.user_id
+      } as unknown as Subject));
+      
       setSubjects(list);
       if (list.length > 0 && !selectedSubject) {
         setSelectedSubject(list[0]);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'subjects');
-    });
-    return unsubscribe;
-  }, []);
+    };
+
+    fetchSubjects();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('subjects_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` }, () => {
+        fetchSubjects();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   // Fetch Decks when Subject changes
   useEffect(() => {
-    if (!selectedSubject) {
+    if (!user || !selectedSubject) {
       setDecks([]);
       setSelectedDeck(null);
       return;
     }
-    const q = query(
-      collection(db, 'decks'), 
-      where('subjectId', '==', selectedSubject.id)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deck));
-      // Sort in memory
-      list.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+    const fetchDecks = async () => {
+      const { data, error } = await supabase
+        .from('decks')
+        .select('*')
+        .eq('subject_id', selectedSubject.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching decks:', error);
+        return;
+      }
+      
+      const list = data.map(item => ({
+        id: item.id,
+        name: item.name,
+        subject_id: item.subject_id,
+        created_at: item.created_at,
+        user_id: item.user_id
+      } as unknown as Deck));
+      
       setDecks(list);
-      if (list.length > 0) {
+      if (list.length > 0 && !selectedDeck) {
         setSelectedDeck(list[0]);
-      } else {
+      } else if (list.length === 0) {
         setSelectedDeck(null);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'decks');
-    });
-    return unsubscribe;
-  }, [selectedSubject]);
+    };
+
+    fetchDecks();
+
+    const channel = supabase
+      .channel('decks_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` }, () => {
+        fetchDecks();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedSubject, user]);
 
   // Fetch Flashcards when Deck or Subject changes
   useEffect(() => {
-    if (!selectedSubject || !selectedDeck) {
+    if (!user || !selectedSubject || !selectedDeck) {
       setFlashcards([]);
       return;
     }
 
-    const q = query(
-      collection(db, 'flashcards'), 
-      where('deckId', '==', selectedDeck.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Flashcard));
-      // Sort in memory
-      list.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    const fetchFlashcards = async () => {
+      const { data, error } = await supabase
+        .from('flashcards')
+        .select('*')
+        .eq('deck_id', selectedDeck.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching flashcards:', error);
+        return;
+      }
+      
+      const list = data.map(item => ({
+        id: item.id,
+        front: item.front,
+        back: item.back,
+        deck_id: item.deck_id,
+        subject_id: item.subject_id,
+        tags: item.tags,
+        mastery_level: item.mastery_level,
+        last_reviewed: item.last_reviewed,
+        next_review_date: item.next_review_date,
+        created_at: item.created_at,
+        user_id: item.user_id
+      } as unknown as Flashcard));
+      
       setFlashcards(list);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'flashcards');
-    });
-    return unsubscribe;
-  }, [selectedDeck, selectedSubject]);
+    };
 
-  const filteredFlashcards = useMemo(() => {
-    return flashcards.filter(card => {
+    fetchFlashcards();
+
+    const channel = supabase
+      .channel('flashcards_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'flashcards', filter: `user_id=eq.${user.id}` }, () => {
+        fetchFlashcards();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDeck, selectedSubject, user]);
+
+  const sortedAndFilteredFlashcards = useMemo(() => {
+    let result = flashcards.filter(card => {
       const matchesSearch = searchTerm === '' || 
         card.front.toLowerCase().includes(searchTerm.toLowerCase()) || 
         card.back.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -246,7 +416,31 @@ export default function App() {
 
       return matchesSearch && matchesTags;
     });
-  }, [flashcards, searchTerm, selectedFilterTags]);
+
+    // Sorting logic
+    result.sort((a, b) => {
+      if (sortBy === 'created_at') {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA;
+      }
+      if (sortBy === 'alphabetical') {
+        return a.front.localeCompare(b.front);
+      }
+      if (sortBy === 'mastery_level') {
+        const levels: Record<MasteryLevel, number> = {
+          'New': 0,
+          'Learning': 1,
+          'Review': 2,
+          'Mastered': 3
+        };
+        return levels[a.mastery_level] - levels[b.mastery_level];
+      }
+      return 0;
+    });
+
+    return result;
+  }, [flashcards, searchTerm, selectedFilterTags, sortBy]);
 
   const allUniqueTags = useMemo(() => {
     const tags = new Set<string>();
@@ -261,54 +455,84 @@ export default function App() {
   };
 
   const handleCreateSubject = async () => {
-    if (!newSubjectName.trim()) return;
+    if (!newSubjectName.trim() || !user) return;
     try {
-      await addDoc(collection(db, 'subjects'), {
-        name: newSubjectName.trim(),
-        createdAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('subjects')
+        .insert([{
+          name: newSubjectName.trim(),
+          user_id: user.id
+        }]);
+      
+      if (error) throw error;
       setNewSubjectName('');
       setIsAddingSubject(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'subjects');
+      console.error('Error creating subject:', error);
     }
   };
 
   const handleCreateDeck = async () => {
-    if (!newDeckName.trim() || !selectedSubject) return;
+    if (!newDeckName.trim() || !selectedSubject || !user) return;
     try {
-      await addDoc(collection(db, 'decks'), {
-        name: newDeckName.trim(),
-        subjectId: selectedSubject.id,
-        createdAt: serverTimestamp()
-      });
+      const { data: deckData, error: deckError } = await supabase
+        .from('decks')
+        .insert([{
+          name: newDeckName.trim(),
+          subject_id: selectedSubject.id,
+          user_id: user.id
+        }])
+        .select()
+        .single();
+
+      if (deckError) throw deckError;
+
+      // Add demo flashcard
+      const { error: cardError } = await supabase
+        .from('flashcards')
+        .insert([{
+          front: "what is UshanJ",
+          back: "UshanJ is your complete preparation partner — built for every student, for every competitive exam.\n\nCreated by Abhishek Kumar, UshanJ was born from one simple belief: aspirants don’t just need more content — they need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.\n\nToday, UshanJ offers three powerful platforms to support your entire preparation journey:\n\nUshanj.com is a full-featured web app with dedicated tracking tools for every major competitive exam. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.\n\nUshanj Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.\n\nUshanj Flashcards is a dedicated flashcard platform built specifically for competitive exam revision — helping you retain more in less time through active recall and spaced repetition.\n\nWhether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, UshanJ meets you where you are and gives you the tools to go further.\n\nThree platforms. Every exam. One preparation partner.",
+          deck_id: deckData.id,
+          subject_id: selectedSubject.id,
+          user_id: user.id,
+          tags: ["UshanJ", "Demo"],
+          mastery_level: 'New'
+        }]);
+
+      if (cardError) throw cardError;
+
       setNewDeckName('');
       setIsAddingDeck(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'decks');
+      console.error('Error creating deck:', error);
     }
   };
 
   const handleCreateCard = async () => {
-    if (!newCardFront.trim() || !newCardBack.trim() || !selectedDeck || !selectedSubject || isCreatingCard) return;
+    if (!newCardFront.trim() || !newCardBack.trim() || !selectedDeck || !selectedSubject || !user || isCreatingCard) return;
     setIsCreatingCard(true);
     try {
       const tags = newCardTags.split(',').map(t => t.trim()).filter(t => t !== '');
-      await addDoc(collection(db, 'flashcards'), {
-        front: newCardFront.trim(),
-        back: newCardBack.trim(),
-        deckId: selectedDeck.id,
-        subjectId: selectedSubject.id,
-        tags: tags,
-        masteryLevel: 'New',
-        createdAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('flashcards')
+        .insert([{
+          front: newCardFront.trim(),
+          back: newCardBack.trim(),
+          deck_id: selectedDeck.id,
+          subject_id: selectedSubject.id,
+          user_id: user.id,
+          tags: tags,
+          mastery_level: 'New'
+        }]);
+      
+      if (error) throw error;
       setNewCardFront('');
       setNewCardBack('');
       setNewCardTags('');
       setIsAddingCard(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'flashcards');
+      console.error('Error creating card:', error);
     } finally {
       setIsCreatingCard(false);
     }
@@ -316,14 +540,19 @@ export default function App() {
 
   const handleUpdateCard = async (id: string, front: string, back: string, tags: string[]) => {
     try {
-      await updateDoc(doc(db, 'flashcards', id), {
-        front: front.trim(),
-        back: back.trim(),
-        tags: tags
-      });
+      const { error } = await supabase
+        .from('flashcards')
+        .update({
+          front: front.trim(),
+          back: back.trim(),
+          tags: tags
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
       setEditingCard(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'flashcards');
+      console.error('Error updating card:', error);
     }
   };
 
@@ -348,16 +577,21 @@ export default function App() {
 
   const handleStudyRate = async (rating: 'Easy' | 'Medium' | 'Hard') => {
     const currentCard = studyCards[currentStudyIndex];
-    let newMastery: MasteryLevel = currentCard.masteryLevel;
+    let newMastery: MasteryLevel = currentCard.mastery_level;
     if (rating === 'Easy') newMastery = 'Mastered';
     if (rating === 'Medium') newMastery = 'Review';
     if (rating === 'Hard') newMastery = 'Learning';
 
     try {
-      await updateDoc(doc(db, 'flashcards', currentCard.id), { 
-        masteryLevel: newMastery, 
-        lastReviewed: serverTimestamp() 
-      });
+      const { error } = await supabase
+        .from('flashcards')
+        .update({ 
+          mastery_level: newMastery, 
+          last_reviewed: new Date().toISOString() 
+        })
+        .eq('id', currentCard.id);
+
+      if (error) throw error;
 
       if (currentStudyIndex < studyCards.length - 1) {
         setCurrentStudyIndex(prev => prev + 1);
@@ -366,18 +600,38 @@ export default function App() {
         setIsStudyModalOpen(false);
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'flashcards');
+      console.error('Error rating card:', error);
     }
   };
 
-  const startSubjectStudy = async (subjectId: string) => {
+  const startSubjectStudy = async (subject_id: string) => {
+    if (!user) return;
     try {
-      const q = query(collection(db, 'flashcards'), where('subjectId', '==', subjectId));
-      const snapshot = await getDocs(q);
-      const cards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Flashcard));
+      const { data, error } = await supabase
+        .from('flashcards')
+        .select('*')
+        .eq('subject_id', subject_id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      const cards = data.map(item => ({
+        id: item.id,
+        front: item.front,
+        back: item.back,
+        deck_id: item.deck_id,
+        subject_id: item.subject_id,
+        tags: item.tags,
+        mastery_level: item.mastery_level,
+        last_reviewed: item.last_reviewed,
+        next_review_date: item.next_review_date,
+        created_at: item.created_at,
+        user_id: item.user_id
+      } as unknown as Flashcard));
+      
       startStudySession(cards);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'flashcards');
+      console.error('Error starting subject study:', error);
     }
   };
 
@@ -387,11 +641,16 @@ export default function App() {
       message: 'This will permanently delete the subject and all its decks and flashcards.',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'subjects', id));
+          const { error } = await supabase
+            .from('subjects')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
           if (selectedSubject?.id === id) setSelectedSubject(null);
           setConfirmModal(null);
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `subjects/${id}`);
+          console.error('Error deleting subject:', error);
         }
       }
     });
@@ -403,11 +662,16 @@ export default function App() {
       message: 'This will permanently delete the deck and all its flashcards.',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'decks', id));
+          const { error } = await supabase
+            .from('decks')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
           if (selectedDeck?.id === id) setSelectedDeck(null);
           setConfirmModal(null);
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `decks/${id}`);
+          console.error('Error deleting deck:', error);
         }
       }
     });
@@ -419,10 +683,15 @@ export default function App() {
       message: 'Are you sure you want to delete this flashcard?',
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'flashcards', id));
+          const { error } = await supabase
+            .from('flashcards')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
           setConfirmModal(null);
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `flashcards/${id}`);
+          console.error('Error deleting card:', error);
         }
       }
     });
@@ -431,9 +700,14 @@ export default function App() {
   const handleDeleteStudyCard = async (id: string, permanent: boolean) => {
     if (permanent) {
       try {
-        await deleteDoc(doc(db, 'flashcards', id));
+        const { error } = await supabase
+          .from('flashcards')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `flashcards/${id}`);
+        console.error('Error deleting study card:', error);
         return;
       }
     }
@@ -454,8 +728,122 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#ff6b00]"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f7f6f3] gap-6">
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.1, 1]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="p-6 bg-white rounded-[2.5rem] shadow-2xl shadow-[#ff6b00]/10 border border-[#ff6b00]/5"
+        >
+          <Brain size={64} className="text-[#ff6b00]" />
+        </motion.div>
+        <div className="flex flex-col items-center gap-2">
+          <h2 className="text-xl font-bold text-[#37352f] tracking-tight">UshanJ Flashcards</h2>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#f7f6f3] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="notion-card bg-white p-10 max-w-md w-full shadow-2xl shadow-black/5 space-y-8"
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div className="p-4 bg-[#fff4eb] rounded-3xl shadow-inner">
+              <Brain size={48} className="text-[#ff6b00]" />
+            </div>
+            <div className="text-center space-y-1">
+              <h1 className="text-3xl font-bold tracking-normal text-[#37352f]">UshanJ Flashcards</h1>
+              <p className="text-gray-600 text-sm font-medium">
+                {authMode === 'login' ? 'Welcome back! Please sign in.' : 'Join UshanJ to start your journey.'}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleEmailAuth} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Email Address</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3.5 px-4 text-sm outline-none placeholder:text-gray-400"
+                placeholder="Enter your email"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Password</label>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3.5 px-4 text-sm outline-none pr-12 placeholder:text-gray-400"
+                  placeholder="Enter your password"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#ff6b00] transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {authError && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3 text-red-600 text-xs font-medium leading-relaxed"
+              >
+                <XCircle size={16} className="shrink-0 mt-0.5" />
+                <span>{authError}</span>
+              </motion.div>
+            )}
+
+            <button 
+              type="submit"
+              disabled={isAuthenticating}
+              className="w-full bg-[#ff6b00] text-white font-bold py-4 rounded-xl text-sm shadow-xl shadow-[#ff6b00]/20 hover:shadow-[#ff6b00]/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAuthenticating ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                authMode === 'login' ? 'Sign In' : 'Create Account'
+              )}
+            </button>
+          </form>
+
+          <div className="text-center pt-4">
+            <button 
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                setAuthError(null);
+              }}
+              className="text-sm font-bold text-[#ff6b00] hover:text-[#e66000] transition-all"
+            >
+              {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            </button>
+          </div>
+
+        </motion.div>
       </div>
     );
   }
@@ -463,10 +851,45 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen p-6 sm:p-12 max-w-6xl mx-auto space-y-12">
-        {/* Greeting Section */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Welcome back, {user?.displayName || user?.email?.split('@')[0] || 'Student'}</h1>
-          <p className="text-gray-400 text-sm">Ready to continue your learning journey?</p>
+        {/* Header with Logout */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="w-12 h-12 rounded-full bg-[#f7f6f3] border border-gray-100 flex items-center justify-center overflow-hidden hover:border-[#ff6b00]/20 transition-all group"
+            >
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon size={20} className="text-gray-400 group-hover:text-[#ff6b00] transition-colors" />
+              )}
+            </button>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold">
+                Welcome back, {profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Student'}
+              </h1>
+              <p className="text-gray-400 text-sm">Ready to continue your learning journey?</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="notion-pill text-xs font-bold text-gray-400 hover:text-[#ff6b00] transition-colors flex items-center gap-2"
+            >
+              <Settings size={14} />
+              Profile
+            </button>
+            <button 
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              className="notion-pill text-xs font-bold text-gray-400 hover:text-red-600 transition-colors flex items-center gap-2"
+            >
+              <LogOut size={14} />
+              Sign Out
+            </button>
+          </div>
         </div>
 
         {/* Subjects Row */}
@@ -605,6 +1028,18 @@ export default function App() {
               <h2 className="text-xl font-bold">Flashcards</h2>
             </div>
             <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-[#f7f6f3] border border-transparent rounded-lg px-3 py-2">
+                <Filter size={14} className="text-gray-400" />
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortCriteria)}
+                  className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-600"
+                >
+                  <option value="created_at">Newest First</option>
+                  <option value="alphabetical">Alphabetical (A-Z)</option>
+                  <option value="mastery_level">Mastery Level</option>
+                </select>
+              </div>
               <div className="relative flex-1 sm:w-64">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input 
@@ -712,17 +1147,15 @@ export default function App() {
             )}
 
             <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
-              {filteredFlashcards.map(card => (
+              {sortedAndFilteredFlashcards.map(card => (
                 <FlashcardItem 
                   key={card.id} 
                   card={card} 
-                  onDelete={() => handleDeleteCard(card.id)} 
                   onClick={() => setDetailCard(card)}
-                  onEdit={() => setEditingCard(card)}
                 />
               ))}
             </div>
-            {filteredFlashcards.length === 0 && !isAddingCard && (
+            {sortedAndFilteredFlashcards.length === 0 && !isAddingCard && (
                 <div className="w-full flex flex-col items-center justify-center py-12 text-gray-400">
                   <Layers size={48} className="mb-4 opacity-20" />
                   <p className="italic">
@@ -811,10 +1244,133 @@ export default function App() {
             />
           )}
         </AnimatePresence>
+
+        {/* Profile Modal */}
+        <AnimatePresence>
+          {isProfileModalOpen && profile && (
+            <ProfileModal 
+              profile={profile}
+              onClose={() => setIsProfileModalOpen(false)}
+              onUpdate={handleUpdateProfile}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </ErrorBoundary>
   );
 }
+
+const ProfileModal: React.FC<{ 
+  profile: Profile, 
+  onClose: () => void, 
+  onUpdate: (updates: Partial<Profile>) => Promise<void> 
+}> = ({ profile, onClose, onUpdate }) => {
+  const [username, setUsername] = useState(profile.username || '');
+  const [fullName, setFullName] = useState(profile.full_name || '');
+  const [bio, setBio] = useState(profile.bio || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await onUpdate({
+      username: username || null,
+      full_name: fullName || null,
+      bio: bio || null,
+      avatar_url: avatarUrl || null
+    });
+    setIsSaving(false);
+    onClose();
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-8 space-y-8">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold">Profile Settings</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-24 h-24 rounded-full bg-[#f7f6f3] border-2 border-gray-100 flex items-center justify-center overflow-hidden relative group">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <UserIcon size={40} className="text-gray-300" />
+              )}
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Username</label>
+              <input 
+                type="text" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                placeholder="Choose a unique username"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Full Name</label>
+              <input 
+                type="text" 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                placeholder="Your display name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Avatar URL</label>
+              <input 
+                type="text" 
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                placeholder="Link to your profile picture"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Bio</label>
+              <textarea 
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none resize-none"
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full bg-[#37352f] text-white font-bold py-4 rounded-xl text-sm hover:bg-black transition-all shadow-xl shadow-black/10 disabled:opacity-50"
+          >
+            {isSaving ? 'Saving Changes...' : 'Save Profile'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const AlertModal: React.FC<{ title: string, message: string, onClose: () => void }> = ({ title, message, onClose }) => (
   <motion.div 
@@ -886,37 +1442,19 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
   </motion.div>
 );
 
-const FlashcardItem: React.FC<{ card: Flashcard, onDelete: () => void, onClick: () => void, onEdit: () => void }> = ({ card, onDelete, onClick, onEdit }) => {
+const FlashcardItem: React.FC<{ card: Flashcard, onClick: () => void }> = ({ card, onClick }) => {
   return (
     <div className="shrink-0">
       <div 
         onClick={onClick}
-        className="w-64 h-44 p-5 flex flex-col hover:bg-[#f7f6f3] rounded-xl transition-all cursor-pointer group border border-[#ff6b00]/20 hover:border-[#ff6b00]/40"
+        className="w-64 h-44 p-5 flex flex-col hover:bg-[#f7f6f3] rounded-xl transition-all cursor-pointer group border border-[#ff6b00]/20 hover:border-[#ff6b00]/40 shadow-sm hover:shadow-md"
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Question</span>
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="p-1.5 hover:bg-white rounded text-gray-400 hover:text-[#ff6b00] transition-colors flex items-center gap-1"
-              title="Edit Card"
-            >
-              <Edit3 size={12} />
-              <span className="text-[9px] font-bold uppercase">Edit</span>
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-1.5 hover:bg-white rounded text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1"
-              title="Delete Card"
-            >
-              <Trash2 size={12} />
-              <span className="text-[9px] font-bold uppercase">Delete</span>
-            </button>
-          </div>
+          <span className="text-[10px] uppercase tracking-wider text-[#ff6b00] font-bold">Question</span>
         </div>
         
-        <div className="flex-1 flex items-center justify-center text-center px-2">
-          <p className="text-sm font-semibold leading-relaxed text-[#37352f] line-clamp-4">
+        <div className="flex-1 flex items-center justify-center text-center px-2 overflow-y-auto custom-scrollbar">
+          <p className="text-sm font-semibold leading-relaxed text-[#37352f] break-words py-2">
             {card.front}
           </p>
         </div>
@@ -924,7 +1462,7 @@ const FlashcardItem: React.FC<{ card: Flashcard, onDelete: () => void, onClick: 
         <div className="mt-4 flex flex-wrap gap-1.5">
           {card.tags?.slice(0, 3).map((tag, i) => (
             <span key={i} className="text-[9px] bg-white text-gray-500 px-1.5 py-0.5 rounded-sm font-medium border border-gray-100">
-              {tag}
+              #{tag}
             </span>
           ))}
           {card.tags && card.tags.length > 3 && (
@@ -1026,17 +1564,17 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="w-full max-w-2xl"
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="w-full max-w-2xl flex flex-col gap-8"
         onClick={e => e.stopPropagation()}
       >
-        <div className="perspective-1000 w-full min-h-[400px] mb-6">
+        <div className="perspective-1000 w-full h-[450px]">
           <motion.div 
             onClick={() => setIsFlipped(!isFlipped)}
             animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -1044,41 +1582,52 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             className="relative w-full h-full preserve-3d cursor-pointer"
           >
             {/* Front */}
-            <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white">
+            <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white rounded-3xl">
               <div className="mb-8 shrink-0">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Question</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Question</span>
               </div>
-              <div className="w-full max-h-[60vh] overflow-y-auto scrollbar-hide px-4">
-                <p className="text-2xl sm:text-3xl font-semibold leading-tight text-[#37352f]">{card.front}</p>
+              <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-2xl sm:text-3xl font-bold leading-tight text-[#37352f] break-words">{card.front}</p>
               </div>
-              <div className="mt-8 shrink-0">
+              <div className="mt-12 shrink-0 flex flex-col items-center gap-2">
                 <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click to flip</p>
+                <div className="w-8 h-1 bg-gray-100 rounded-full" />
               </div>
             </div>
 
             {/* Back */}
-            <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none">
+            <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
               <div className="mb-8 shrink-0">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Answer</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Answer</span>
               </div>
-              <div className="w-full max-h-[60vh] overflow-y-auto scrollbar-hide px-4">
-                <p className="text-xl sm:text-2xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium">{card.back}</p>
+              <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium break-words">{card.back}</p>
               </div>
-              <div className="mt-8 shrink-0">
+              <div className="mt-12 shrink-0 flex flex-col items-center gap-2">
                 <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click to flip</p>
+                <div className="w-8 h-1 bg-gray-100 rounded-full" />
               </div>
             </div>
           </motion.div>
         </div>
 
         <div className="flex justify-center gap-4">
-          <button onClick={onEdit} className="notion-pill bg-white hover:bg-gray-50 text-xs font-bold flex items-center gap-2">
-            <Edit3 size={14} /> Edit
+          <button 
+            onClick={onEdit} 
+            className="notion-pill bg-white hover:bg-gray-50 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+          >
+            <Edit3 size={16} className="text-[#ff6b00]" /> Edit
           </button>
-          <button onClick={onDelete} className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2">
-            <Trash2 size={14} /> Delete
+          <button 
+            onClick={onDelete} 
+            className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+          >
+            <Trash2 size={16} /> Delete
           </button>
-          <button onClick={onClose} className="notion-pill bg-[#37352f] text-white border-[#37352f] text-xs font-bold">
+          <button 
+            onClick={onClose} 
+            className="notion-pill bg-[#37352f] text-white border-[#37352f] hover:bg-[#2e2c27] text-xs font-bold px-8 py-3 shadow-lg hover:shadow-xl transition-all"
+          >
             Close
           </button>
         </div>
@@ -1317,8 +1866,8 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   <div className="mb-8 shrink-0">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Question</span>
                   </div>
-                  <div className="w-full max-h-[60vh] overflow-y-auto scrollbar-hide px-4">
-                    <p className="text-2xl sm:text-4xl font-semibold leading-tight text-[#37352f] max-w-xl mx-auto">{card.front}</p>
+                  <div className="w-full max-h-[60vh] overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-2xl sm:text-3xl font-semibold leading-snug text-[#37352f] max-w-xl mx-auto break-words">{card.front}</p>
                   </div>
                   <div className="mt-12 flex flex-col items-center gap-2 shrink-0">
                     <p className="text-xs text-gray-300 font-medium uppercase tracking-widest">Click or Space to reveal answer</p>
@@ -1331,8 +1880,8 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   <div className="mb-8">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Answer</span>
                   </div>
-                  <div className="w-full max-h-[60vh] overflow-y-auto scrollbar-hide px-4">
-                    <p className="text-xl sm:text-3xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium">{card.back}</p>
+                  <div className="w-full max-h-[60vh] overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium break-words">{card.back}</p>
                   </div>
                   <div className="mt-12">
                     <p className="text-xs text-gray-300 font-medium uppercase tracking-widest">Click or Space to see question</p>
