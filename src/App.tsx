@@ -20,7 +20,9 @@ import {
   RotateCcw,
   User as UserIcon,
   Settings,
-  LogOut
+  LogOut,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
@@ -67,73 +69,8 @@ interface Profile {
 
 // --- Components ---
 
-const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [hasError, setHasError] = useState(false);
-  const [errorInfo, setErrorInfo] = useState<string | null>(null);
-
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      if (event.error?.message) {
-        try {
-          const parsed = JSON.parse(event.error.message);
-          if (parsed.error && parsed.operationType) {
-            setHasError(true);
-            setErrorInfo(JSON.stringify(parsed, null, 2));
-          }
-        } catch (e) {
-          // Not a Firestore error we're looking for
-        }
-      }
-    };
-
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-
-  if (hasError) {
-    return (
-      <div className="min-h-screen bg-[#f7f6f3] flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="notion-card bg-white p-10 max-w-2xl w-full shadow-2xl border-red-100"
-        >
-          <div className="flex flex-col items-center gap-6 text-center">
-            <div className="p-4 bg-red-50 rounded-full text-red-600">
-              <XCircle size={48} />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-[#37352f]">Sync Error</h1>
-              <p className="text-gray-500 text-sm max-w-md">
-                We encountered a problem while communicating with the database. This might be due to a temporary connection issue or permission restrictions.
-              </p>
-            </div>
-            
-            <div className="w-full bg-gray-50 rounded-xl p-6 border border-gray-100 text-left">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Technical Details</p>
-              <div className="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap break-all leading-relaxed">
-                  {errorInfo}
-                </pre>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => window.location.reload()}
-              className="w-full notion-pill bg-[#37352f] text-white font-bold py-4 hover:bg-black transition-all shadow-xl shadow-black/10"
-            >
-              Reload Application
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
-
 export default function App() {
+  console.log('App component is executing');
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -182,6 +119,20 @@ export default function App() {
   // Custom alert/confirm states
   const [alertModal, setAlertModal] = useState<{ title: string; message: string } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true';
+  });
+
+  // Dark mode effect
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode.toString());
+  }, [darkMode]);
 
   // Auth listener
   useEffect(() => {
@@ -813,22 +764,22 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f7f6f3] gap-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-bg-main gap-6">
         <motion.div 
           animate={{ 
             scale: [1, 1.1, 1]
           }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="p-6 bg-white rounded-[2.5rem] shadow-2xl shadow-[#ff6b00]/10 border border-[#ff6b00]/5"
+          className="p-6 bg-bg-secondary rounded-[2.5rem] shadow-2xl shadow-accent/10 border border-accent/5"
         >
-          <Brain size={64} className="text-[#ff6b00]" />
+          <Brain size={64} className="text-accent" />
         </motion.div>
         <div className="flex flex-col items-center gap-2">
-          <h2 className="text-xl font-bold text-[#37352f] tracking-tight">UshanJ Flashcards</h2>
+          <h2 className="text-xl font-bold text-text-main tracking-tight">UshanJ Flashcards</h2>
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce [animation-delay:-0.3s]" />
-            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce [animation-delay:-0.15s]" />
-            <div className="w-1.5 h-1.5 bg-[#ff6b00] rounded-full animate-bounce" />
+            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" />
           </div>
         </div>
       </div>
@@ -837,19 +788,19 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#f7f6f3] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-bg-main flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="notion-card bg-white p-10 max-w-md w-full shadow-2xl shadow-black/5 space-y-8"
+          className="notion-card bg-bg-secondary p-10 max-w-md w-full shadow-2xl shadow-black/5 space-y-8"
         >
           <div className="flex flex-col items-center gap-4">
-            <div className="p-4 bg-[#fff4eb] rounded-3xl shadow-inner">
-              <Brain size={48} className="text-[#ff6b00]" />
+            <div className="p-4 bg-accent/10 rounded-3xl shadow-inner">
+              <Brain size={48} className="text-accent" />
             </div>
             <div className="text-center space-y-1">
-              <h1 className="text-3xl font-bold tracking-normal text-[#37352f]">UshanJ Flashcards</h1>
-              <p className="text-gray-600 text-sm font-medium">
+              <h1 className="text-3xl font-bold tracking-normal text-text-main">UshanJ Flashcards</h1>
+              <p className="text-text-secondary text-sm font-medium">
                 {authMode === 'login' ? 'Welcome back! Please sign in.' : 'Join UshanJ to start your journey.'}
               </p>
             </div>
@@ -857,32 +808,32 @@ export default function App() {
 
           <form onSubmit={handleEmailAuth} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Email Address</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Email Address</label>
               <input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3.5 px-4 text-sm outline-none placeholder:text-gray-400"
+                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3.5 px-4 text-sm outline-none placeholder:text-text-secondary/50"
                 placeholder="Enter your email"
               />
             </div>
             
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Password</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Password</label>
               <div className="relative">
                 <input 
                   type={showPassword ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3.5 px-4 text-sm outline-none pr-12 placeholder:text-gray-400"
+                  className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3.5 px-4 text-sm outline-none pr-12 placeholder:text-text-secondary/50"
                   placeholder="Enter your password"
                 />
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#ff6b00] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-accent transition-colors"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -893,7 +844,7 @@ export default function App() {
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3 text-red-600 text-xs font-medium leading-relaxed"
+                className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 p-4 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs font-medium leading-relaxed"
               >
                 <XCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{authError}</span>
@@ -903,11 +854,11 @@ export default function App() {
             <button 
               type="submit"
               disabled={isAuthenticating}
-              className="w-full bg-[#ff6b00] text-white font-bold py-4 rounded-xl text-sm shadow-xl shadow-[#ff6b00]/20 hover:shadow-[#ff6b00]/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-accent text-accent-foreground font-bold py-4 rounded-xl text-sm shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAuthenticating ? (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                   <span>Processing...</span>
                 </div>
               ) : (
@@ -922,7 +873,7 @@ export default function App() {
                 setAuthMode(authMode === 'login' ? 'signup' : 'login');
                 setAuthError(null);
               }}
-              className="text-sm font-bold text-[#ff6b00] hover:text-[#e66000] transition-all"
+              className="text-sm font-bold text-accent hover:opacity-80 transition-all"
             >
               {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
             </button>
@@ -934,42 +885,53 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen p-6 sm:p-12 max-w-6xl mx-auto space-y-12">
+    <div className="min-h-screen p-6 sm:p-12 max-w-6xl mx-auto space-y-12 bg-bg-main transition-colors duration-300">
         {/* Header with Logout */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsProfileModalOpen(true)}
-              className="w-12 h-12 rounded-full bg-[#f7f6f3] border border-gray-100 flex items-center justify-center overflow-hidden hover:border-[#ff6b00]/20 transition-all group"
+              className="w-12 h-12 rounded-full bg-bg-secondary border border-border-main flex items-center justify-center overflow-hidden hover:border-accent/20 transition-all group"
             >
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <UserIcon size={20} className="text-gray-400 group-hover:text-[#ff6b00] transition-colors" />
+                <UserIcon size={20} className="text-text-secondary group-hover:text-accent transition-colors" />
               )}
             </button>
             <div className="space-y-1">
-              <h1 className="text-2xl font-bold">
+              <h1 
+                onClick={() => setIsProfileModalOpen(true)}
+                className="text-2xl font-bold text-text-main cursor-pointer hover:text-accent transition-colors"
+                title="Open Account & Settings"
+              >
                 Welcome back, {profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Student'}
               </h1>
-              <p className="text-gray-400 text-sm">Ready to continue your learning journey?</p>
+              <p className="text-text-secondary text-sm">Ready to continue your learning journey?</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button 
+              onClick={() => setDarkMode(!darkMode)}
+              className="notion-pill text-xs font-bold text-text-secondary hover:text-accent transition-colors flex items-center gap-2 border-border-main"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+              {darkMode ? "Light" : "Dark"}
+            </button>
+            <button 
               onClick={() => setIsProfileModalOpen(true)}
-              className="notion-pill text-xs font-bold text-gray-400 hover:text-[#ff6b00] transition-colors flex items-center gap-2"
+              className="notion-pill text-xs font-bold text-text-secondary hover:text-accent transition-colors flex items-center gap-2 border-border-main"
             >
               <Settings size={14} />
-              Profile
+              Settings
             </button>
             <button 
               onClick={async () => {
                 await supabase.auth.signOut();
                 setUser(null);
               }}
-              className="notion-pill text-xs font-bold text-gray-400 hover:text-red-600 transition-colors flex items-center gap-2"
+              className="notion-pill text-xs font-bold text-text-secondary hover:text-red-600 transition-colors flex items-center gap-2 border-border-main"
             >
               <LogOut size={14} />
               Sign Out
@@ -980,11 +942,11 @@ export default function App() {
         {/* Subjects Row */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Subjects</h2>
+            <h2 className="text-xl font-bold text-text-main">Subjects</h2>
             {selectedSubject && (
               <button 
                 onClick={() => startSubjectStudy(selectedSubject.id)}
-                className="notion-pill flex items-center gap-2 text-sm font-bold hover:bg-[#ff6b00] hover:text-white transition-colors"
+                className="notion-pill flex items-center gap-2 text-sm font-bold hover:bg-accent hover:text-accent-foreground transition-colors text-text-secondary"
               >
                 <Play size={14} /> Study Subject
               </button>
@@ -1001,12 +963,12 @@ export default function App() {
                       value={editSubjectName}
                       onChange={(e) => setEditSubjectName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject()}
-                      className="notion-pill text-sm font-bold w-32 outline-none"
+                      className="notion-pill text-sm font-bold w-32 outline-none bg-bg-main text-text-main border-border-main"
                     />
-                    <button onClick={handleUpdateSubject} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                    <button onClick={handleUpdateSubject} className="p-1 hover:text-accent flex items-center gap-1 text-xs font-bold text-text-secondary">
                       <Check size={18} />
                     </button>
-                    <button onClick={() => setEditingSubject(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                    <button onClick={() => setEditingSubject(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold text-text-secondary">
                       <X size={18} />
                     </button>
                   </div>
@@ -1014,7 +976,7 @@ export default function App() {
                   <>
                     <button 
                       onClick={() => setSelectedSubject(subject)}
-                      className={`notion-pill text-sm font-bold transition-all ${selectedSubject?.id === subject.id ? 'active' : 'bg-white'}`}
+                      className={`notion-pill text-sm font-bold transition-all ${selectedSubject?.id === subject.id ? 'active' : 'bg-bg-main text-text-secondary border-border-main'}`}
                     >
                       {subject.name}
                     </button>
@@ -1024,14 +986,14 @@ export default function App() {
                           setEditingSubject(subject);
                           setEditSubjectName(subject.name);
                         }}
-                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-[#ff6b00]"
+                        className="bg-bg-main border border-border-main rounded-full p-0.5 shadow-sm hover:text-accent"
                         title="Edit Subject"
                       >
                         <Edit3 size={10} />
                       </button>
                       <button 
                         onClick={() => handleDeleteSubject(subject.id)}
-                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-red-600"
+                        className="bg-bg-main border border-border-main rounded-full p-0.5 shadow-sm hover:text-red-600"
                         title="Delete Subject"
                       >
                         <X size={10} />
@@ -1049,14 +1011,14 @@ export default function App() {
                   value={newSubjectName}
                   onChange={(e) => setNewSubjectName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateSubject()}
-                  className="notion-pill text-sm font-bold w-32 outline-none"
+                  className="notion-pill text-sm font-bold w-32 outline-none bg-bg-main text-text-main border-border-main"
                   placeholder="Subject name..."
                 />
-                <button onClick={handleCreateSubject} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                <button onClick={handleCreateSubject} className="p-1 hover:text-accent flex items-center gap-1 text-xs font-bold text-text-secondary">
                   <Check size={18} />
                   <span>Save</span>
                 </button>
-                <button onClick={() => setIsAddingSubject(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                <button onClick={() => setIsAddingSubject(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold text-text-secondary">
                   <X size={18} />
                   <span>Cancel</span>
                 </button>
@@ -1064,7 +1026,7 @@ export default function App() {
             ) : (
                 <button 
                   onClick={() => setIsAddingSubject(true)}
-                  className="notion-pill bg-white hover:bg-gray-50 transition-colors shrink-0 flex items-center gap-2"
+                  className="notion-pill bg-bg-main hover:bg-bg-secondary transition-colors shrink-0 flex items-center gap-2 text-text-secondary border-border-main"
                 >
                   <PlusCircle size={18} />
                   <span>Add Subject</span>
@@ -1076,11 +1038,11 @@ export default function App() {
         {/* Decks Row */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Decks</h2>
+            <h2 className="text-xl font-bold text-text-main">Decks</h2>
             {selectedDeck && (
               <button 
                 onClick={() => startStudySession(flashcards)}
-                className="notion-pill flex items-center gap-2 text-sm font-bold hover:bg-[#ff6b00] hover:text-white transition-colors"
+                className="notion-pill flex items-center gap-2 text-sm font-bold hover:bg-accent hover:text-accent-foreground transition-colors text-text-secondary border-border-main"
               >
                 <Play size={14} /> Study Deck
               </button>
@@ -1097,12 +1059,12 @@ export default function App() {
                       value={editDeckName}
                       onChange={(e) => setEditDeckName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleUpdateDeck()}
-                      className="notion-pill text-sm font-bold w-32 outline-none"
+                      className="notion-pill text-sm font-bold w-32 outline-none bg-bg-main text-text-main border-border-main"
                     />
-                    <button onClick={handleUpdateDeck} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                    <button onClick={handleUpdateDeck} className="p-1 hover:text-accent flex items-center gap-1 text-xs font-bold text-text-secondary">
                       <Check size={18} />
                     </button>
-                    <button onClick={() => setEditingDeck(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                    <button onClick={() => setEditingDeck(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold text-text-secondary">
                       <X size={18} />
                     </button>
                   </div>
@@ -1110,7 +1072,7 @@ export default function App() {
                   <>
                     <button 
                       onClick={() => setSelectedDeck(deck)}
-                      className={`notion-pill text-sm font-bold transition-all ${selectedDeck?.id === deck.id ? 'active' : 'bg-white'}`}
+                      className={`notion-pill text-sm font-bold transition-all ${selectedDeck?.id === deck.id ? 'active' : 'bg-bg-main text-text-secondary border-border-main'}`}
                     >
                       {deck.name}
                     </button>
@@ -1120,14 +1082,14 @@ export default function App() {
                           setEditingDeck(deck);
                           setEditDeckName(deck.name);
                         }}
-                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-[#ff6b00]"
+                        className="bg-bg-main border border-border-main rounded-full p-0.5 shadow-sm hover:text-accent"
                         title="Edit Deck"
                       >
                         <Edit3 size={10} />
                       </button>
                       <button 
                         onClick={() => handleDeleteDeck(deck.id)}
-                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-red-600"
+                        className="bg-bg-main border border-border-main rounded-full p-0.5 shadow-sm hover:text-red-600"
                         title="Delete Deck"
                       >
                         <X size={10} />
@@ -1146,14 +1108,14 @@ export default function App() {
                     value={newDeckName}
                     onChange={(e) => setNewDeckName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateDeck()}
-                    className="notion-pill text-sm font-bold w-32 outline-none"
+                    className="notion-pill text-sm font-bold w-32 outline-none bg-white dark:bg-[#252525] dark:text-white dark:border-gray-800"
                     placeholder="Deck name..."
                   />
-                  <button onClick={handleCreateDeck} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                  <button onClick={handleCreateDeck} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold dark:text-gray-400">
                     <Check size={18} />
                     <span>Save</span>
                   </button>
-                  <button onClick={() => setIsAddingDeck(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                  <button onClick={() => setIsAddingDeck(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold dark:text-gray-400">
                     <X size={18} />
                     <span>Cancel</span>
                   </button>
@@ -1161,14 +1123,14 @@ export default function App() {
               ) : (
                 <button 
                   onClick={() => setIsAddingDeck(true)}
-                  className="notion-pill bg-white hover:bg-gray-50 transition-colors shrink-0 flex items-center gap-2"
+                  className="notion-pill bg-white dark:bg-[#252525] hover:bg-gray-50 dark:hover:bg-[#2f2f2f] transition-colors shrink-0 flex items-center gap-2 dark:text-gray-300 dark:border-gray-800"
                 >
                   <PlusCircle size={18} />
                   <span>Add Deck</span>
                 </button>
               )
             )}
-            {!selectedSubject && <p className="text-sm text-gray-400 italic">Select a subject first</p>}
+            {!selectedSubject && <p className="text-sm text-gray-400 dark:text-gray-500 italic">Select a subject first</p>}
           </div>
         </section>
 
@@ -1176,15 +1138,15 @@ export default function App() {
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h2 className="text-xl font-bold">Flashcards</h2>
+              <h2 className="text-xl font-bold dark:text-white">Flashcards</h2>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-[#f7f6f3] border border-transparent rounded-lg px-3 py-2">
-                <Filter size={14} className="text-gray-400" />
+              <div className="flex items-center gap-2 bg-bg-secondary border border-border-main rounded-lg px-3 py-2">
+                <Filter size={14} className="text-text-secondary" />
                 <select 
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortCriteria)}
-                  className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-600"
+                  className="bg-transparent text-xs font-bold outline-none cursor-pointer text-text-secondary"
                 >
                   <option value="created_at">Newest First</option>
                   <option value="alphabetical">Alphabetical (A-Z)</option>
@@ -1192,19 +1154,19 @@ export default function App() {
                 </select>
               </div>
               <div className="relative flex-1 sm:w-64">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
                 <input 
                   type="text"
                   placeholder="Search cards..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[#f7f6f3] border border-transparent rounded-lg text-sm outline-none focus:bg-white focus:border-[#ff6b00]/20 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-bg-secondary border border-border-main rounded-lg text-sm outline-none focus:bg-bg-main focus:border-accent/20 transition-all text-text-main"
                 />
               </div>
               {selectedDeck && (
                 <button 
                   onClick={() => setIsAddingCard(true)}
-                  className="notion-pill bg-white hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-bold"
+                  className="notion-pill bg-bg-secondary hover:bg-bg-main transition-colors flex items-center gap-2 text-sm font-bold text-text-secondary border-border-main"
                 >
                   <PlusCircle size={18} /> Add Card
                 </button>
@@ -1215,7 +1177,7 @@ export default function App() {
           {/* Advanced Filters */}
           {allUniqueTags.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 text-gray-400 mr-2">
+              <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 mr-2">
                 <Filter size={14} />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Filter Tags:</span>
               </div>
@@ -1225,8 +1187,8 @@ export default function App() {
                   onClick={() => toggleTagFilter(tag)}
                   className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all border ${
                     selectedFilterTags.includes(tag) 
-                      ? 'bg-[#ff6b00]/10 text-[#ff6b00] border-[#ff6b00]/20' 
-                      : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300'
+                      ? 'bg-accent/10 text-accent border-accent/20' 
+                      : 'bg-bg-secondary text-text-secondary border-border-main hover:border-text-secondary/30'
                   }`}
                 >
                   #{tag}
@@ -1235,7 +1197,7 @@ export default function App() {
               {selectedFilterTags.length > 0 && (
                 <button 
                   onClick={() => setSelectedFilterTags([])}
-                  className="text-[10px] font-bold text-gray-400 hover:text-red-500 transition-colors ml-2"
+                  className="text-[10px] font-bold text-text-secondary hover:text-red-500 transition-colors ml-2"
                 >
                   Clear All
                 </button>
@@ -1245,58 +1207,58 @@ export default function App() {
           
           <div className="min-h-[350px] p-2">
             {isAddingCard && (
-              <div className="mb-10 p-8 bg-[#fcfcfb] border border-[#ff6b00]/10 rounded-2xl space-y-6 shadow-inner">
+              <div className="mb-10 p-8 bg-bg-secondary border border-accent/10 rounded-2xl space-y-6 shadow-inner">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#ff6b00]" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">Create New Card</h3>
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-text-secondary">Create New Card</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Question</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Question</label>
                     <textarea 
                       autoFocus
                       placeholder="Enter your question..."
                       value={newCardFront}
                       onChange={(e) => setNewCardFront(e.target.value)}
-                      className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm outline-none min-h-[120px] focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all"
+                      className="w-full p-4 bg-bg-main border border-border-main rounded-xl text-sm outline-none min-h-[120px] focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all text-text-main"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Answer</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Answer</label>
                     <textarea 
                       placeholder="Enter the answer..."
                       value={newCardBack}
                       onChange={(e) => setNewCardBack(e.target.value)}
-                      className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm outline-none min-h-[120px] focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all"
+                      className="w-full p-4 bg-bg-main border border-border-main rounded-xl text-sm outline-none min-h-[120px] focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all text-text-main"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Tags</label>
-                  <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 focus-within:border-[#ff6b00] focus-within:ring-4 focus-within:ring-[#ff6b00]/5 transition-all">
-                    <Tag size={16} className="text-gray-400" />
+                  <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Tags</label>
+                  <div className="flex items-center gap-3 bg-bg-main border border-border-main rounded-xl px-4 py-3 focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 transition-all">
+                    <Tag size={16} className="text-text-secondary" />
                     <input 
                       type="text"
                       placeholder="e.g. important, exam, chapter1"
                       value={newCardTags}
                       onChange={(e) => setNewCardTags(e.target.value)}
-                      className="bg-transparent outline-none w-full text-sm"
+                      className="bg-transparent outline-none w-full text-sm text-text-main"
                     />
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setIsAddingCard(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 transition-colors">Cancel</button>
+                  <button onClick={() => setIsAddingCard(false)} className="px-6 py-2.5 text-sm font-bold text-text-secondary hover:text-text-main transition-colors">Cancel</button>
                   <button 
                     onClick={() => handleCreateCard(true)} 
                     disabled={isCreatingCard}
-                    className={`notion-pill bg-white text-[#ff6b00] text-sm font-bold border-[#ff6b00] px-6 py-2.5 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#ff6b00]/5 active:scale-[0.98]'}`}
+                    className={`notion-pill bg-bg-main text-accent text-sm font-bold border-accent px-6 py-2.5 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent/5 active:scale-[0.98]'}`}
                   >
                     Save & Add Another
                   </button>
                   <button 
                     onClick={() => handleCreateCard(false)} 
                     disabled={isCreatingCard}
-                    className={`notion-pill bg-[#ff6b00] text-white text-sm font-bold border-[#ff6b00] px-8 py-2.5 shadow-lg shadow-[#ff6b00]/20 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+                    className={`notion-pill bg-accent text-accent-foreground text-sm font-bold border-accent px-8 py-2.5 shadow-lg shadow-accent/20 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                   >
                     {isCreatingCard ? 'Saving...' : 'Save & Close'}
                   </button>
@@ -1314,7 +1276,7 @@ export default function App() {
               ))}
             </div>
             {sortedAndFilteredFlashcards.length === 0 && !isAddingCard && (
-                <div className="w-full flex flex-col items-center justify-center py-12 text-gray-400">
+                <div className="w-full flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-600">
                   <Layers size={48} className="mb-4 opacity-20" />
                   <p className="italic">
                     {searchTerm || selectedFilterTags.length > 0 
@@ -1415,19 +1377,22 @@ export default function App() {
               profile={profile}
               onClose={() => setIsProfileModalOpen(false)}
               onUpdate={handleUpdateProfile}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
             />
           )}
         </AnimatePresence>
       </div>
-    </ErrorBoundary>
-  );
-}
+    );
+  }
 
 const ProfileModal: React.FC<{ 
   profile: Profile, 
   onClose: () => void, 
-  onUpdate: (updates: Partial<Profile>) => Promise<void> 
-}> = ({ profile, onClose, onUpdate }) => {
+  onUpdate: (updates: Partial<Profile>) => Promise<void>,
+  darkMode: boolean,
+  setDarkMode: (dark: boolean) => void
+}> = ({ profile, onClose, onUpdate, darkMode, setDarkMode }) => {
   const [username, setUsername] = useState(profile.username || '');
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [bio, setBio] = useState(profile.bio || '');
@@ -1457,75 +1422,91 @@ const ProfileModal: React.FC<{
       <motion.div 
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+        className="bg-bg-secondary w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-8 space-y-8">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold">Profile Settings</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <h3 className="text-xl font-bold text-text-main">Account & Settings</h3>
+            <button onClick={onClose} className="text-text-secondary hover:text-text-main">
               <X size={20} />
             </button>
           </div>
 
           <div className="flex flex-col items-center gap-4">
-            <div className="w-24 h-24 rounded-full bg-[#f7f6f3] border-2 border-gray-100 flex items-center justify-center overflow-hidden relative group">
+            <div className="w-24 h-24 rounded-full bg-bg-main border-2 border-border-main flex items-center justify-center overflow-hidden relative group">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <UserIcon size={40} className="text-gray-300" />
+                <UserIcon size={40} className="text-text-secondary opacity-30" />
               )}
             </div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
+            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Username</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Username</label>
               <input 
                 type="text" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none text-text-main"
                 placeholder="Choose a unique username"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Full Name</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Full Name</label>
               <input 
                 type="text" 
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none text-text-main"
                 placeholder="Your display name"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Avatar URL</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Avatar URL</label>
               <input 
                 type="text" 
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none"
+                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none text-text-main"
                 placeholder="Link to your profile picture"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-gray-500 ml-1">Bio</label>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Bio</label>
               <textarea 
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={3}
-                className="w-full bg-[#fcfcfb] border border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-4 focus:ring-[#ff6b00]/5 transition-all py-3 px-4 text-sm outline-none resize-none"
+                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none resize-none text-text-main"
                 placeholder="Tell us about yourself..."
               />
+            </div>
+
+            <div className="pt-2">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Appearance</label>
+              <div className="flex items-center justify-between bg-bg-main border border-border-main rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  {darkMode ? <Moon size={18} className="text-accent" /> : <Sun size={18} className="text-accent" />}
+                  <span className="text-sm font-medium text-text-main">{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                </div>
+                <button 
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`w-12 h-6 rounded-full transition-all relative ${darkMode ? 'bg-accent' : 'bg-border-main'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${darkMode ? 'left-7' : 'left-1'}`} />
+                </button>
+              </div>
             </div>
           </div>
 
           <button 
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full bg-[#37352f] text-white font-bold py-4 rounded-xl text-sm hover:bg-black transition-all shadow-xl shadow-black/10 disabled:opacity-50"
+            className="w-full bg-text-main text-bg-main font-bold py-4 rounded-xl text-sm hover:opacity-90 transition-all shadow-xl shadow-black/10 disabled:opacity-50"
           >
             {isSaving ? 'Saving Changes...' : 'Save Profile'}
           </button>
@@ -1546,19 +1527,19 @@ const AlertModal: React.FC<{ title: string, message: string, onClose: () => void
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
+      className="bg-bg-secondary w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
       onClick={e => e.stopPropagation()}
     >
       <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
         <Check size={32} />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="text-gray-500 text-sm">{message}</p>
+        <h3 className="text-xl font-bold text-text-main">Alert</h3>
+        <p className="text-text-secondary text-sm">{message}</p>
       </div>
       <button 
         onClick={onClose}
-        className="w-full py-3 bg-[#37352f] text-white rounded-xl text-sm font-bold transition-all"
+        className="w-full py-3 bg-text-main text-bg-main rounded-xl text-sm font-bold transition-all"
       >
         Got it
       </button>
@@ -1577,15 +1558,15 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
+      className="bg-bg-secondary w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
       onClick={e => e.stopPropagation()}
     >
       <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
         <Trash2 size={32} />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="text-gray-500 text-sm">{message}</p>
+        <h3 className="text-xl font-bold text-text-main">{title}</h3>
+        <p className="text-text-secondary text-sm">{message}</p>
       </div>
       <div className="space-y-3">
         <button 
@@ -1596,7 +1577,7 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
         </button>
         <button 
           onClick={onCancel}
-          className="w-full py-3 bg-gray-50 text-gray-500 rounded-xl text-sm font-bold transition-all"
+          className="w-full py-3 bg-bg-main text-text-secondary rounded-xl text-sm font-bold transition-all"
         >
           Cancel
         </button>
@@ -1610,26 +1591,26 @@ const FlashcardItem: React.FC<{ card: Flashcard, onClick: () => void }> = ({ car
     <div className="w-full">
       <div 
         onClick={onClick}
-        className="w-full h-44 p-5 flex flex-col hover:bg-[#f7f6f3] rounded-xl transition-all cursor-pointer group border border-[#ff6b00]/20 hover:border-[#ff6b00]/40 shadow-sm hover:shadow-md"
+        className="w-full h-44 p-5 flex flex-col hover:bg-bg-secondary rounded-xl transition-all cursor-pointer group border border-accent/20 hover:border-accent/40 shadow-sm hover:shadow-md"
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] uppercase tracking-wider text-[#ff6b00] font-bold">Question</span>
+          <span className="text-[10px] uppercase tracking-wider text-accent font-bold">Question</span>
         </div>
         
         <div className="flex-1 flex items-center justify-center text-center px-2 overflow-y-auto custom-scrollbar">
-          <p className="text-sm font-semibold leading-relaxed text-[#37352f] break-words py-2">
+          <p className="text-sm font-semibold leading-relaxed text-text-main break-words py-2">
             {card.front}
           </p>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-1.5">
           {card.tags?.slice(0, 3).map((tag, i) => (
-            <span key={i} className="text-[9px] bg-white text-gray-500 px-1.5 py-0.5 rounded-sm font-medium border border-gray-100">
+            <span key={i} className="text-[9px] bg-bg-main text-text-secondary px-1.5 py-0.5 rounded-sm font-medium border border-border-main">
               #{tag}
             </span>
           ))}
           {card.tags && card.tags.length > 3 && (
-            <span className="text-[9px] text-gray-400 font-medium">+{card.tags.length - 3}</span>
+            <span className="text-[9px] text-text-secondary font-medium">+{card.tags.length - 3}</span>
           )}
         </div>
       </div>
@@ -1652,57 +1633,57 @@ const EditCardModal: React.FC<{ card: Flashcard, onClose: () => void, onSave: (i
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 space-y-6"
+        className="bg-bg-secondary w-full max-w-2xl rounded-2xl shadow-2xl p-8 space-y-6"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">Edit Flashcard</h3>
+          <h3 className="text-lg font-bold text-text-main">Edit Flashcard</h3>
           <button 
             onClick={onClose} 
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2"
+            className="p-2 hover:bg-bg-main rounded-full transition-colors flex items-center gap-2"
             title="Close"
           >
-            <span className="text-xs font-bold text-gray-400 uppercase">Close</span>
+            <span className="text-xs font-bold text-text-secondary uppercase">Close</span>
             <X size={20} />
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Question</label>
+            <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Question</label>
             <textarea 
               value={front}
               onChange={(e) => setFront(e.target.value)}
-              className="w-full p-4 bg-[#fcfcfb] border border-gray-200 rounded-xl text-sm outline-none min-h-[150px] focus:border-[#ff6b00] transition-all"
+              className="w-full p-4 bg-bg-main border border-border-main rounded-xl text-sm outline-none min-h-[150px] focus:border-accent transition-all text-text-main"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Answer</label>
+            <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Answer</label>
             <textarea 
               value={back}
               onChange={(e) => setBack(e.target.value)}
-              className="w-full p-4 bg-[#fcfcfb] border border-gray-200 rounded-xl text-sm outline-none min-h-[150px] focus:border-[#ff6b00] transition-all"
+              className="w-full p-4 bg-bg-main border border-border-main rounded-xl text-sm outline-none min-h-[150px] focus:border-accent transition-all text-text-main"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Tags</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfb] border border-gray-200 rounded-xl px-4 py-3 focus-within:border-[#ff6b00] transition-all">
-            <Tag size={16} className="text-gray-400" />
+          <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Tags</label>
+          <div className="flex items-center gap-3 bg-bg-main border border-border-main rounded-xl px-4 py-3 focus-within:border-accent transition-all">
+            <Tag size={16} className="text-text-secondary" />
             <input 
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="bg-transparent outline-none w-full text-sm"
+              className="bg-transparent outline-none w-full text-sm text-text-main"
             />
           </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-gray-500">Cancel</button>
+          <button onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-text-secondary">Cancel</button>
           <button 
             onClick={() => onSave(card.id, front, back, tags.split(',').map(t => t.trim()).filter(t => t !== ''))}
-            className="notion-pill bg-[#ff6b00] text-white text-sm font-bold border-[#ff6b00] px-8 py-2.5"
+            className="notion-pill bg-accent text-accent-foreground text-sm font-bold border-accent px-8 py-2.5"
           >
             Update Card
           </button>
@@ -1723,6 +1704,15 @@ interface DetailCardModalProps {
 const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit, onDelete, onRate }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const getMasteryColor = (level: MasteryLevel) => {
+    switch (level) {
+      case 'Mastered': return 'text-green-600 bg-green-50 border-green-100';
+      case 'Review': return 'text-accent bg-accent/5 border-accent/10';
+      case 'Learning': return 'text-blue-600 bg-blue-50 border-blue-100';
+      default: return 'text-text-secondary bg-bg-secondary border-border-main';
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -1735,9 +1725,18 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="w-full max-w-2xl flex flex-col gap-8"
+        className="w-full max-w-2xl flex flex-col gap-8 relative"
         onClick={e => e.stopPropagation()}
       >
+        {/* Top Right Close Button */}
+        <button 
+          onClick={onClose}
+          className="absolute -top-12 right-0 p-2 text-white hover:text-gray-200 transition-colors flex items-center gap-2 group"
+        >
+          <span className="text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Close</span>
+          <X size={24} />
+        </button>
+
         <div className="perspective-1000 w-full h-[450px]">
           <motion.div 
             onClick={() => setIsFlipped(!isFlipped)}
@@ -1746,30 +1745,40 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             className="relative w-full h-full preserve-3d cursor-pointer"
           >
             {/* Front */}
-            <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white rounded-3xl">
+            <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-bg-secondary rounded-3xl">
+              {/* Mastery Badge */}
+              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${getMasteryColor(card.mastery_level)}`}>
+                {card.mastery_level === 'Review' ? 'Moderate' : card.mastery_level}
+              </div>
+              
               <div className="mb-8 shrink-0">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Question</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Question</span>
               </div>
               <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                <p className="text-2xl sm:text-3xl font-bold leading-tight text-[#37352f] break-words">{card.front}</p>
+                <p className="text-2xl sm:text-3xl font-bold leading-tight text-text-main break-words">{card.front}</p>
               </div>
               <div className="mt-12 shrink-0 flex flex-col items-center gap-2">
-                <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click to flip</p>
-                <div className="w-8 h-1 bg-gray-100 rounded-full" />
+                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Click to flip</p>
+                <div className="w-8 h-1 bg-border-main rounded-full" />
               </div>
             </div>
 
             {/* Back */}
-            <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
+            <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-bg-secondary p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
+              {/* Mastery Badge */}
+              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${getMasteryColor(card.mastery_level)}`}>
+                {card.mastery_level === 'Review' ? 'Moderate' : card.mastery_level}
+              </div>
+
               <div className="mb-8 shrink-0">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Answer</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Answer</span>
               </div>
               <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium break-words">{card.back}</p>
+                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-text-main font-medium break-words">{card.back}</p>
               </div>
               <div className="mt-12 shrink-0 flex flex-col items-center gap-2">
-                <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click to flip</p>
-                <div className="w-8 h-1 bg-gray-100 rounded-full" />
+                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Click to flip</p>
+                <div className="w-8 h-1 bg-border-main rounded-full" />
               </div>
             </div>
           </motion.div>
@@ -1779,36 +1788,36 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           <div className="flex justify-center gap-4">
             <button 
               onClick={onEdit} 
-              className="notion-pill bg-white hover:bg-gray-50 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+              className="notion-pill bg-bg-secondary hover:bg-bg-main text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all text-text-main"
             >
-              <Edit3 size={16} className="text-[#ff6b00]" /> Edit
+              <Edit3 size={16} className="text-accent" /> Edit
             </button>
             <button 
               onClick={onDelete} 
-              className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+              className="notion-pill bg-bg-secondary hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
             >
               <Trash2 size={16} /> Delete
             </button>
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rating</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Rating</p>
             <div className="flex justify-center gap-3">
               <button 
                 onClick={() => onRate('Easy')}
-                className="notion-pill bg-white hover:bg-green-50 text-green-600 border-green-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-white dark:bg-[#252525] hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Easy
               </button>
               <button 
                 onClick={() => onRate('Medium')}
-                className="notion-pill bg-white hover:bg-orange-50 text-orange-600 border-orange-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-white dark:bg-[#252525] hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Moderate
               </button>
               <button 
                 onClick={() => onRate('Hard')}
-                className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-white dark:bg-[#252525] hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Hard
               </button>
@@ -1818,7 +1827,7 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           <div className="flex justify-center">
             <button 
               onClick={onClose} 
-              className="notion-pill bg-[#37352f] text-white border-[#37352f] hover:bg-[#2e2c27] text-xs font-bold px-12 py-3 shadow-lg hover:shadow-xl transition-all"
+              className="notion-pill bg-[#37352f] dark:bg-white text-white dark:text-black border-[#37352f] dark:border-white hover:bg-[#2e2c27] dark:hover:bg-gray-200 text-xs font-bold px-12 py-3 shadow-lg hover:shadow-xl transition-all"
             >
               Close
             </button>
@@ -1891,52 +1900,52 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-white flex flex-col"
+      className="fixed inset-0 z-50 bg-bg-main flex flex-col"
     >
       {/* Header */}
-      <div className="p-6 flex items-center justify-between border-b border-gray-100">
+      <div className="p-6 flex items-center justify-between border-b border-border-main">
         <div className="flex items-center gap-4">
           <button 
             onClick={onClose} 
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2"
+            className="p-2 hover:bg-bg-secondary rounded-full transition-colors flex items-center gap-2"
             title="Exit Study Session"
           >
-            <X size={24} />
-            <span className="text-sm font-bold text-gray-400 uppercase">Exit</span>
+            <X size={24} className="text-text-main" />
+            <span className="text-sm font-bold text-text-secondary uppercase">Exit</span>
           </button>
           <div>
-            <h3 className="font-bold">Study Session</h3>
-            <p className="text-xs text-gray-400">Card {currentIndex + 1} of {cards.length}</p>
+            <h3 className="font-bold text-text-main">Study Session</h3>
+            <p className="text-xs text-text-secondary">Card {currentIndex + 1} of {cards.length}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setShowDeleteConfirm(true)}
-            className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-colors flex items-center gap-2"
+            className="p-2 hover:bg-red-50 text-text-secondary hover:text-red-600 rounded-full transition-colors flex items-center gap-2"
             title="Delete or remove card"
           >
             <Trash2 size={20} />
             <span className="text-xs font-bold uppercase">Remove</span>
           </button>
-          <div className="h-6 w-[1px] bg-gray-100 mx-1" />
+          <div className="h-6 w-[1px] bg-border-main mx-1" />
           <button 
             onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center gap-2 notion-pill transition-all text-xs font-bold ${isEditing ? 'bg-[#ff6b00] text-white border-[#ff6b00]' : 'hover:bg-gray-50'}`}
+            className={`flex items-center gap-2 notion-pill transition-all text-xs font-bold ${isEditing ? 'bg-accent text-accent-foreground border-accent' : 'hover:bg-bg-secondary text-text-main'}`}
           >
             <Edit3 size={14} /> {isEditing ? 'Editing...' : 'Edit Card'}
           </button>
           <button 
             onClick={onShuffle}
-            className="flex items-center gap-2 notion-pill hover:bg-gray-50 text-xs font-bold"
+            className="flex items-center gap-2 notion-pill hover:bg-bg-secondary text-xs font-bold text-text-main"
           >
             <Shuffle size={14} /> Shuffle
           </button>
-          <div className="h-6 w-[1px] bg-gray-100 mx-2" />
+          <div className="h-6 w-[1px] bg-border-main mx-2" />
           <div className="flex items-center gap-2">
             <button 
               disabled={currentIndex === 0}
               onClick={onPrev}
-              className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 flex items-center gap-1"
+              className="p-2 hover:bg-bg-secondary rounded-full disabled:opacity-30 flex items-center gap-1 text-text-main"
               title="Previous Card"
             >
               <ArrowLeft size={20} />
@@ -1945,7 +1954,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
             <button 
               disabled={currentIndex === cards.length - 1}
               onClick={onNext}
-              className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30 flex items-center gap-1"
+              className="p-2 hover:bg-bg-secondary rounded-full disabled:opacity-30 flex items-center gap-1 text-text-main"
               title="Next Card"
             >
               <span className="text-xs font-bold uppercase">Next</span>
@@ -1961,7 +1970,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
           {/* Tags */}
           <div className="flex flex-wrap gap-2 justify-center">
             {card.tags?.map((tag, i) => (
-              <span key={i} className="notion-pill text-xs bg-gray-50 text-gray-500">#{tag}</span>
+              <span key={i} className="notion-pill text-xs bg-bg-secondary text-text-secondary border-border-main">#{tag}</span>
             ))}
           </div>
 
@@ -1971,14 +1980,14 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="notion-card p-12 bg-white shadow-2xl flex flex-col items-center justify-center text-center space-y-8 border-red-100"
+                className="notion-card p-12 bg-bg-secondary shadow-2xl flex flex-col items-center justify-center text-center space-y-8 border-red-100"
               >
                 <div className="space-y-4">
                   <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
                     <Trash2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-bold">Remove Card</h3>
-                  <p className="text-gray-500 max-w-sm mx-auto">How would you like to remove this card from your study session?</p>
+                  <h3 className="text-2xl font-bold text-text-main">Remove Card</h3>
+                  <p className="text-text-secondary max-w-sm mx-auto">How would you like to remove this card from your study session?</p>
                 </div>
 
                 <div className="w-full max-w-md space-y-3">
@@ -1987,7 +1996,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                       onDeleteCard(card.id, false);
                       setShowDeleteConfirm(false);
                     }}
-                    className="w-full py-4 px-6 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-2xl text-sm font-bold transition-all border border-gray-100"
+                    className="w-full py-4 px-6 bg-bg-main hover:bg-bg-secondary text-text-main rounded-2xl text-sm font-bold transition-all border border-border-main"
                   >
                     Remove from this session only
                   </button>
@@ -2002,36 +2011,36 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   </button>
                   <button 
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="w-full py-4 px-6 text-gray-400 hover:text-gray-600 text-sm font-bold transition-all"
+                    className="w-full py-4 px-6 text-text-secondary hover:text-text-main text-sm font-bold transition-all"
                   >
                     Cancel
                   </button>
                 </div>
               </motion.div>
             ) : isEditing ? (
-              <div className="notion-card p-8 bg-white shadow-2xl space-y-6 border-[#ff6b00]/20">
+              <div className="notion-card p-8 bg-bg-main shadow-2xl space-y-6 border-accent/20">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Question</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Question</label>
                     <textarea 
                       value={editFront}
                       onChange={(e) => setEditFront(e.target.value)}
-                      className="w-full p-4 bg-[#fcfcfb] border border-gray-200 rounded-xl text-sm outline-none min-h-[200px] focus:border-[#ff6b00] transition-all"
+                      className="w-full p-4 bg-bg-secondary border border-border-main rounded-xl text-sm outline-none min-h-[200px] focus:border-accent transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Answer</label>
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Answer</label>
                     <textarea 
                       value={editBack}
                       onChange={(e) => setEditBack(e.target.value)}
-                      className="w-full p-4 bg-[#fcfcfb] border border-gray-200 rounded-xl text-sm outline-none min-h-[200px] focus:border-[#ff6b00] transition-all"
+                      className="w-full p-4 bg-bg-secondary border border-border-main rounded-xl text-sm outline-none min-h-[200px] focus:border-accent transition-all"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Tags</label>
-                  <div className="flex items-center gap-3 bg-[#fcfcfb] border border-gray-200 rounded-xl px-4 py-3 focus-within:border-[#ff6b00] transition-all">
-                    <Tag size={16} className="text-gray-400" />
+                  <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Tags</label>
+                  <div className="flex items-center gap-3 bg-bg-secondary border border-border-main rounded-xl px-4 py-3 focus-within:border-accent transition-all">
+                    <Tag size={16} className="text-text-secondary" />
                     <input 
                       type="text"
                       value={editTags}
@@ -2041,8 +2050,8 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   </div>
                 </div>
                 <div className="flex justify-end gap-3">
-                  <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500">Cancel</button>
-                  <button onClick={handleSaveEdit} className="notion-pill bg-[#ff6b00] text-white text-sm font-bold border-[#ff6b00] px-8 py-2.5 flex items-center gap-2">
+                  <button onClick={() => setIsEditing(false)} className="px-6 py-2.5 text-sm font-bold text-text-secondary">Cancel</button>
+                  <button onClick={handleSaveEdit} className="notion-pill bg-accent text-accent-foreground text-sm font-bold border-accent px-8 py-2.5 flex items-center gap-2">
                     <Check size={16} /> Save Changes
                   </button>
                 </div>
@@ -2055,30 +2064,30 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 className="relative w-full h-full preserve-3d cursor-pointer"
               >
                 {/* Front (Question) */}
-                <div className="absolute inset-0 backface-hidden notion-card p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white rounded-3xl">
+                <div className="absolute inset-0 backface-hidden notion-card p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-bg-secondary rounded-3xl">
                   <div className="mb-6 shrink-0">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Question</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Question</span>
                   </div>
                   <div className="w-full max-h-[250px] sm:max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-2xl sm:text-4xl font-bold leading-tight text-[#37352f] max-w-xl mx-auto break-words">{card.front}</p>
+                    <p className="text-2xl sm:text-4xl font-bold leading-tight text-text-main max-w-xl mx-auto break-words">{card.front}</p>
                   </div>
                   <div className="mt-10 flex flex-col items-center gap-2 shrink-0">
-                    <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click or Space to reveal answer</p>
-                    <div className="w-8 h-1 bg-gray-100 rounded-full" />
+                    <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-50">Click or Space to reveal answer</p>
+                    <div className="w-8 h-1 bg-border-main rounded-full" />
                   </div>
                 </div>
 
                 {/* Back (Answer) */}
-                <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
+                <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-bg-secondary p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
                   <div className="mb-6 shrink-0">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Answer</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/5 px-4 py-1.5 rounded-full border border-accent/10">Answer</span>
                   </div>
                   <div className="w-full max-h-[250px] sm:max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium max-w-xl mx-auto break-words">{card.back}</p>
+                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-medium max-w-xl mx-auto break-words">{card.back}</p>
                   </div>
                   <div className="mt-10 flex flex-col items-center gap-2 shrink-0">
-                    <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click or Space to see question</p>
-                    <div className="w-8 h-1 bg-gray-100 rounded-full" />
+                    <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-50">Click or Space to see question</p>
+                    <div className="w-8 h-1 bg-border-main rounded-full" />
                   </div>
                 </div>
               </motion.div>
@@ -2116,20 +2125,20 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   onClick={onPrev}
                   className="group flex flex-col items-center gap-2 disabled:opacity-20 transition-all"
                 >
-                  <div className="p-4 bg-white border border-gray-100 rounded-full shadow-sm group-hover:shadow-md group-hover:border-[#ff6b00]/20 transition-all">
-                    <ArrowLeft size={24} className="text-gray-600 group-hover:text-[#ff6b00]" />
+                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <ArrowLeft size={24} className="text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Previous</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Previous</span>
                 </button>
 
                 <button 
                   onClick={onShuffle}
                   className="group flex flex-col items-center gap-2 transition-all"
                 >
-                  <div className="p-4 bg-white border border-gray-100 rounded-full shadow-sm group-hover:shadow-md group-hover:border-[#ff6b00]/20 transition-all">
-                    <Shuffle size={24} className="text-gray-600 group-hover:text-[#ff6b00]" />
+                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <Shuffle size={24} className="text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Shuffle</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Shuffle</span>
                 </button>
 
                 <button 
@@ -2137,26 +2146,26 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   onClick={onNext}
                   className="group flex flex-col items-center gap-2 disabled:opacity-20 transition-all"
                 >
-                  <div className="p-4 bg-white border border-gray-100 rounded-full shadow-sm group-hover:shadow-md group-hover:border-[#ff6b00]/20 transition-all">
-                    <ArrowRight size={24} className="text-gray-600 group-hover:text-[#ff6b00]" />
+                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <ArrowRight size={24} className="text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Next</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Next</span>
                 </button>
               </div>
 
               {/* Keyboard Hints */}
-              <div className="flex justify-center gap-6 text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+              <div className="flex justify-center gap-6 text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50">
                 <div className="flex items-center gap-2">
-                  <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">Space</span> Flip
+                  <span className="bg-bg-secondary px-1.5 py-0.5 rounded text-text-main">Space</span> Flip
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">← / →</span> Navigate
+                  <span className="bg-bg-secondary px-1.5 py-0.5 rounded text-text-main">← / →</span> Navigate
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">E</span> Edit
+                  <span className="bg-bg-secondary px-1.5 py-0.5 rounded text-text-main">E</span> Edit
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">Esc</span> Exit
+                  <span className="bg-bg-secondary px-1.5 py-0.5 rounded text-text-main">Esc</span> Exit
                 </div>
               </div>
             </div>
@@ -2165,13 +2174,14 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
       </div>
 
       {/* Progress Bar */}
-      <div className="h-1 bg-gray-100 w-full">
+      <div className="h-1 bg-border-main w-full">
         <motion.div 
           initial={{ width: 0 }}
           animate={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
-          className="h-full bg-[#ff6b00]"
+          className="h-full bg-accent"
         />
       </div>
     </motion.div>
   );
 };
+// Trigger rebuild

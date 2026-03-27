@@ -1,33 +1,72 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
-@theme {
+:root {
   --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --bg-main: #ffffff;
+  --bg-secondary: #f4f4f5;
+  --bg-card: #ffffff;
+  --text-main: #000000;
+  --text-secondary: #52525b;
+  --border-main: #e4e4e7;
+  --accent: #ff6b00;
+  --accent-foreground: #ffffff;
+}
+
+.dark {
+  --bg-main: #000000;
+  --bg-secondary: #18181b;
+  --bg-card: #09090b;
+  --text-main: #ffffff;
+  --text-secondary: #a1a1aa;
+  --border-main: #27272a;
+  --accent: #ffffff;
+  --accent-foreground: #000000;
+}
+
+@theme {
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-bg-main: var(--bg-main);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-text-main: var(--text-main);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-main: var(--border-main);
 }
 
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #ffffff;
-  color: #37352f; /* Notion's default text color */
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Notion-inspired utility classes */
 .notion-border {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-main);
 }
 
 .notion-card {
   border: 1px solid rgba(55, 53, 47, 0.08);
   border-radius: 12px;
-  background-color: #ffffff;
+  background-color: var(--bg-card);
   transition: all 0.2s ease;
+}
+
+.dark .notion-card {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .notion-card:hover {
   border-color: rgba(255, 107, 0, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.dark .notion-card:hover {
+  border-color: rgba(255, 107, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -39,26 +78,27 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e5e7eb;
+  background: var(--border-main);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+  background: var(--text-secondary);
 }
 
 .notion-pill {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-main);
   border-radius: 4px;
   padding: 4px 12px;
   font-size: 0.875rem;
   font-weight: 500;
-  background-color: #ffffff;
+  background-color: var(--bg-card);
   transition: all 0.2s ease;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-main);
 }
 
 button.notion-pill, 
@@ -67,26 +107,27 @@ button.notion-pill,
 }
 
 .notion-pill:hover:not(:disabled):not(.active) {
-  background-color: #f1f1f1;
+  background-color: var(--border-light);
 }
 
 .notion-pill.active {
-  background-color: #ff6b00; /* Orange accent */
-  border-color: #ff6b00;
+  background-color: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
 .notion-input {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-main);
   border-radius: 4px;
   padding: 4px 8px;
-  background-color: #f7f6f3;
+  background-color: var(--bg-secondary);
   font-size: 0.875rem;
   outline: none;
+  color: var(--text-main);
 }
 
 .notion-input:focus {
-  border-color: #ff6b00;
+  border-color: var(--accent);
 }
 
 .scrollbar-hide::-webkit-scrollbar {
