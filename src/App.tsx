@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Trash2, 
   PlusCircle, 
@@ -165,6 +165,10 @@ export default function App() {
   const [isCreatingCard, setIsCreatingCard] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
+  const [editSubjectName, setEditSubjectName] = useState('');
+  const [editDeckName, setEditDeckName] = useState('');
   const [detailCard, setDetailCard] = useState<Flashcard | null>(null);
 
   // Auth form states
@@ -353,42 +357,47 @@ export default function App() {
     };
   }, [selectedSubject, user]);
 
+  const fetchFlashcards = useCallback(async () => {
+    if (!user || !selectedSubject || !selectedDeck) {
+      setFlashcards([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('flashcards')
+      .select('*')
+      .eq('deck_id', selectedDeck.id)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching flashcards:', error);
+      return;
+    }
+    
+    const list = data.map(item => ({
+      id: item.id,
+      front: item.front,
+      back: item.back,
+      deck_id: item.deck_id,
+      subject_id: item.subject_id,
+      tags: item.tags,
+      mastery_level: item.mastery_level,
+      last_reviewed: item.last_reviewed,
+      next_review_date: item.next_review_date,
+      created_at: item.created_at,
+      user_id: item.user_id
+    } as unknown as Flashcard));
+    
+    setFlashcards(list);
+  }, [selectedDeck, selectedSubject, user]);
+
   // Fetch Flashcards when Deck or Subject changes
   useEffect(() => {
     if (!user || !selectedSubject || !selectedDeck) {
       setFlashcards([]);
       return;
     }
-
-    const fetchFlashcards = async () => {
-      const { data, error } = await supabase
-        .from('flashcards')
-        .select('*')
-        .eq('deck_id', selectedDeck.id)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching flashcards:', error);
-        return;
-      }
-      
-      const list = data.map(item => ({
-        id: item.id,
-        front: item.front,
-        back: item.back,
-        deck_id: item.deck_id,
-        subject_id: item.subject_id,
-        tags: item.tags,
-        mastery_level: item.mastery_level,
-        last_reviewed: item.last_reviewed,
-        next_review_date: item.next_review_date,
-        created_at: item.created_at,
-        user_id: item.user_id
-      } as unknown as Flashcard));
-      
-      setFlashcards(list);
-    };
 
     fetchFlashcards();
 
@@ -402,7 +411,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDeck, selectedSubject, user]);
+  }, [fetchFlashcards, user]);
 
   const sortedAndFilteredFlashcards = useMemo(() => {
     let result = flashcards.filter(card => {
@@ -509,7 +518,7 @@ export default function App() {
     }
   };
 
-  const handleCreateCard = async () => {
+  const handleCreateCard = async (keepOpen = false) => {
     if (!newCardFront.trim() || !newCardBack.trim() || !selectedDeck || !selectedSubject || !user || isCreatingCard) return;
     setIsCreatingCard(true);
     try {
@@ -530,7 +539,9 @@ export default function App() {
       setNewCardFront('');
       setNewCardBack('');
       setNewCardTags('');
-      setIsAddingCard(false);
+      if (!keepOpen) {
+        setIsAddingCard(false);
+      }
     } catch (error) {
       console.error('Error creating card:', error);
     } finally {
@@ -575,9 +586,8 @@ export default function App() {
     setCurrentStudyIndex(0);
   };
 
-  const handleStudyRate = async (rating: 'Easy' | 'Medium' | 'Hard') => {
-    const currentCard = studyCards[currentStudyIndex];
-    let newMastery: MasteryLevel = currentCard.mastery_level;
+  const handleRateCardById = async (id: string, currentMastery: MasteryLevel, rating: 'Easy' | 'Medium' | 'Hard') => {
+    let newMastery: MasteryLevel = currentMastery;
     if (rating === 'Easy') newMastery = 'Mastered';
     if (rating === 'Medium') newMastery = 'Review';
     if (rating === 'Hard') newMastery = 'Learning';
@@ -589,9 +599,20 @@ export default function App() {
           mastery_level: newMastery, 
           last_reviewed: new Date().toISOString() 
         })
-        .eq('id', currentCard.id);
+        .eq('id', id);
 
       if (error) throw error;
+    } catch (error) {
+      console.error('Error rating card:', error);
+      throw error;
+    }
+  };
+
+  const handleStudyRate = async (rating: 'Easy' | 'Medium' | 'Hard') => {
+    const currentCard = studyCards[currentStudyIndex];
+    
+    try {
+      await handleRateCardById(currentCard.id, currentCard.mastery_level, rating);
 
       if (currentStudyIndex < studyCards.length - 1) {
         setCurrentStudyIndex(prev => prev + 1);
@@ -600,7 +621,7 @@ export default function App() {
         setIsStudyModalOpen(false);
       }
     } catch (error) {
-      console.error('Error rating card:', error);
+      // Error already logged in handleRateCardById
     }
   };
 
@@ -635,20 +656,60 @@ export default function App() {
     }
   };
 
+  const handleUpdateSubject = async () => {
+    if (!editingSubject || !editSubjectName.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .update({ name: editSubjectName.trim() })
+        .eq('id', editingSubject.id);
+      
+      if (error) throw error;
+      setEditingSubject(null);
+      setEditSubjectName('');
+    } catch (error) {
+      console.error('Error updating subject:', error);
+    }
+  };
+
+  const handleUpdateDeck = async () => {
+    if (!editingDeck || !editDeckName.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('decks')
+        .update({ name: editDeckName.trim() })
+        .eq('id', editingDeck.id);
+      
+      if (error) throw error;
+      setEditingDeck(null);
+      setEditDeckName('');
+    } catch (error) {
+      console.error('Error updating deck:', error);
+    }
+  };
+
   const handleDeleteSubject = async (id: string) => {
     setConfirmModal({
       title: 'Delete Subject?',
       message: 'This will permanently delete the subject and all its decks and flashcards.',
       onConfirm: async () => {
+        // Optimistic update
+        setSubjects(prev => prev.filter(s => s.id !== id));
+        if (selectedSubject?.id === id) setSelectedSubject(null);
+        setConfirmModal(null);
+
         try {
           const { error } = await supabase
             .from('subjects')
             .delete()
             .eq('id', id);
           
-          if (error) throw error;
-          if (selectedSubject?.id === id) setSelectedSubject(null);
-          setConfirmModal(null);
+          if (error) {
+            console.error('Error deleting subject:', error);
+            // Re-fetch to sync
+            const { data } = await supabase.from('subjects').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
+            if (data) setSubjects(data);
+          }
         } catch (error) {
           console.error('Error deleting subject:', error);
         }
@@ -661,15 +722,25 @@ export default function App() {
       title: 'Delete Deck?',
       message: 'This will permanently delete the deck and all its flashcards.',
       onConfirm: async () => {
+        // Optimistic update
+        setDecks(prev => prev.filter(d => d.id !== id));
+        if (selectedDeck?.id === id) setSelectedDeck(null);
+        setConfirmModal(null);
+
         try {
           const { error } = await supabase
             .from('decks')
             .delete()
             .eq('id', id);
           
-          if (error) throw error;
-          if (selectedDeck?.id === id) setSelectedDeck(null);
-          setConfirmModal(null);
+          if (error) {
+            console.error('Error deleting deck:', error);
+            // Re-fetch to sync
+            if (selectedSubject) {
+              const { data } = await supabase.from('decks').select('*').eq('subject_id', selectedSubject.id).eq('user_id', user?.id).order('created_at', { ascending: true });
+              if (data) setDecks(data);
+            }
+          }
         } catch (error) {
           console.error('Error deleting deck:', error);
         }
@@ -682,14 +753,23 @@ export default function App() {
       title: 'Delete Card?',
       message: 'Are you sure you want to delete this flashcard?',
       onConfirm: async () => {
+        // Optimistic update
+        setFlashcards(prev => prev.filter(c => c.id !== id));
+        setDetailCard(null);
+        setConfirmModal(null);
+
         try {
           const { error } = await supabase
             .from('flashcards')
             .delete()
             .eq('id', id);
           
-          if (error) throw error;
-          setConfirmModal(null);
+          if (error) {
+            // Rollback if error
+            console.error('Error deleting card:', error);
+            // Re-fetch to sync
+            fetchFlashcards();
+          }
         } catch (error) {
           console.error('Error deleting card:', error);
         }
@@ -699,16 +779,21 @@ export default function App() {
 
   const handleDeleteStudyCard = async (id: string, permanent: boolean) => {
     if (permanent) {
+      // Optimistic update for main list
+      setFlashcards(prev => prev.filter(c => c.id !== id));
+      
       try {
         const { error } = await supabase
           .from('flashcards')
           .delete()
           .eq('id', id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error deleting study card:', error);
+          fetchFlashcards(); // Re-sync if error
+        }
       } catch (error) {
         console.error('Error deleting study card:', error);
-        return;
       }
     }
 
@@ -908,19 +993,52 @@ export default function App() {
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {subjects.map(subject => (
               <div key={subject.id} className="relative group shrink-0">
-                <button 
-                  onClick={() => setSelectedSubject(subject)}
-                  className={`notion-pill text-sm font-bold transition-all ${selectedSubject?.id === subject.id ? 'active' : 'bg-white'}`}
-                >
-                  {subject.name}
-                </button>
-                <button 
-                  onClick={() => handleDeleteSubject(subject.id)}
-                  className="absolute -top-2 -right-2 bg-white border border-gray-200 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                  title="Delete Subject"
-                >
-                  <X size={10} />
-                </button>
+                {editingSubject?.id === subject.id ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input 
+                      autoFocus
+                      type="text" 
+                      value={editSubjectName}
+                      onChange={(e) => setEditSubjectName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject()}
+                      className="notion-pill text-sm font-bold w-32 outline-none"
+                    />
+                    <button onClick={handleUpdateSubject} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                      <Check size={18} />
+                    </button>
+                    <button onClick={() => setEditingSubject(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                      <X size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => setSelectedSubject(subject)}
+                      className={`notion-pill text-sm font-bold transition-all ${selectedSubject?.id === subject.id ? 'active' : 'bg-white'}`}
+                    >
+                      {subject.name}
+                    </button>
+                    <div className="absolute -top-2 -right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setEditingSubject(subject);
+                          setEditSubjectName(subject.name);
+                        }}
+                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-[#ff6b00]"
+                        title="Edit Subject"
+                      >
+                        <Edit3 size={10} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteSubject(subject.id)}
+                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-red-600"
+                        title="Delete Subject"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             {isAddingSubject ? (
@@ -971,19 +1089,52 @@ export default function App() {
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {decks.map(deck => (
               <div key={deck.id} className="relative group shrink-0">
-                <button 
-                  onClick={() => setSelectedDeck(deck)}
-                  className={`notion-pill text-sm font-bold transition-all ${selectedDeck?.id === deck.id ? 'active' : 'bg-white'}`}
-                >
-                  {deck.name}
-                </button>
-                <button 
-                  onClick={() => handleDeleteDeck(deck.id)}
-                  className="absolute -top-2 -right-2 bg-white border border-gray-200 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                  title="Delete Deck"
-                >
-                  <X size={10} />
-                </button>
+                {editingDeck?.id === deck.id ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input 
+                      autoFocus
+                      type="text" 
+                      value={editDeckName}
+                      onChange={(e) => setEditDeckName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateDeck()}
+                      className="notion-pill text-sm font-bold w-32 outline-none"
+                    />
+                    <button onClick={handleUpdateDeck} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold">
+                      <Check size={18} />
+                    </button>
+                    <button onClick={() => setEditingDeck(null)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold">
+                      <X size={18} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => setSelectedDeck(deck)}
+                      className={`notion-pill text-sm font-bold transition-all ${selectedDeck?.id === deck.id ? 'active' : 'bg-white'}`}
+                    >
+                      {deck.name}
+                    </button>
+                    <div className="absolute -top-2 -right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setEditingDeck(deck);
+                          setEditDeckName(deck.name);
+                        }}
+                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-[#ff6b00]"
+                        title="Edit Deck"
+                      >
+                        <Edit3 size={10} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteDeck(deck.id)}
+                        className="bg-white border border-gray-200 rounded-full p-0.5 shadow-sm hover:text-red-600"
+                        title="Delete Deck"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             {selectedSubject && (
@@ -1136,17 +1287,24 @@ export default function App() {
                 <div className="flex justify-end gap-3 pt-2">
                   <button onClick={() => setIsAddingCard(false)} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 transition-colors">Cancel</button>
                   <button 
-                    onClick={handleCreateCard} 
+                    onClick={() => handleCreateCard(true)} 
+                    disabled={isCreatingCard}
+                    className={`notion-pill bg-white text-[#ff6b00] text-sm font-bold border-[#ff6b00] px-6 py-2.5 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#ff6b00]/5 active:scale-[0.98]'}`}
+                  >
+                    Save & Add Another
+                  </button>
+                  <button 
+                    onClick={() => handleCreateCard(false)} 
                     disabled={isCreatingCard}
                     className={`notion-pill bg-[#ff6b00] text-white text-sm font-bold border-[#ff6b00] px-8 py-2.5 shadow-lg shadow-[#ff6b00]/20 transition-all ${isCreatingCard ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                   >
-                    {isCreatingCard ? 'Saving...' : 'Save Card'}
+                    {isCreatingCard ? 'Saving...' : 'Save & Close'}
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
               {sortedAndFilteredFlashcards.map(card => (
                 <FlashcardItem 
                   key={card.id} 
@@ -1206,6 +1364,11 @@ export default function App() {
               onDelete={() => {
                 handleDeleteCard(detailCard.id);
                 setDetailCard(null);
+              }}
+              onRate={(rating) => {
+                handleRateCardById(detailCard.id, detailCard.mastery_level, rating);
+                setDetailCard(null);
+                setAlertModal({ title: "Card Rated!", message: `Mastery level updated to ${rating === 'Easy' ? 'Mastered' : rating === 'Medium' ? 'Moderate' : 'Learning'}.` });
               }}
             />
           )}
@@ -1444,10 +1607,10 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
 
 const FlashcardItem: React.FC<{ card: Flashcard, onClick: () => void }> = ({ card, onClick }) => {
   return (
-    <div className="shrink-0">
+    <div className="w-full">
       <div 
         onClick={onClick}
-        className="w-64 h-44 p-5 flex flex-col hover:bg-[#f7f6f3] rounded-xl transition-all cursor-pointer group border border-[#ff6b00]/20 hover:border-[#ff6b00]/40 shadow-sm hover:shadow-md"
+        className="w-full h-44 p-5 flex flex-col hover:bg-[#f7f6f3] rounded-xl transition-all cursor-pointer group border border-[#ff6b00]/20 hover:border-[#ff6b00]/40 shadow-sm hover:shadow-md"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] uppercase tracking-wider text-[#ff6b00] font-bold">Question</span>
@@ -1554,9 +1717,10 @@ interface DetailCardModalProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onRate: (rating: 'Easy' | 'Medium' | 'Hard') => void;
 }
 
-const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit, onDelete }) => {
+const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit, onDelete, onRate }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
@@ -1611,25 +1775,54 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           </motion.div>
         </div>
 
-        <div className="flex justify-center gap-4">
-          <button 
-            onClick={onEdit} 
-            className="notion-pill bg-white hover:bg-gray-50 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
-          >
-            <Edit3 size={16} className="text-[#ff6b00]" /> Edit
-          </button>
-          <button 
-            onClick={onDelete} 
-            className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
-          >
-            <Trash2 size={16} /> Delete
-          </button>
-          <button 
-            onClick={onClose} 
-            className="notion-pill bg-[#37352f] text-white border-[#37352f] hover:bg-[#2e2c27] text-xs font-bold px-8 py-3 shadow-lg hover:shadow-xl transition-all"
-          >
-            Close
-          </button>
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-center gap-4">
+            <button 
+              onClick={onEdit} 
+              className="notion-pill bg-white hover:bg-gray-50 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Edit3 size={16} className="text-[#ff6b00]" /> Edit
+            </button>
+            <button 
+              onClick={onDelete} 
+              className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Trash2 size={16} /> Delete
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Rating</p>
+            <div className="flex justify-center gap-3">
+              <button 
+                onClick={() => onRate('Easy')}
+                className="notion-pill bg-white hover:bg-green-50 text-green-600 border-green-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+              >
+                Easy
+              </button>
+              <button 
+                onClick={() => onRate('Medium')}
+                className="notion-pill bg-white hover:bg-orange-50 text-orange-600 border-orange-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+              >
+                Moderate
+              </button>
+              <button 
+                onClick={() => onRate('Hard')}
+                className="notion-pill bg-white hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+              >
+                Hard
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <button 
+              onClick={onClose} 
+              className="notion-pill bg-[#37352f] text-white border-[#37352f] hover:bg-[#2e2c27] text-xs font-bold px-12 py-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
@@ -1773,7 +1966,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
           </div>
 
           {/* Card */}
-          <div className="perspective-1000 w-full min-h-[400px]">
+          <div className="perspective-1000 w-full h-[450px] sm:h-[500px]">
             {showDeleteConfirm ? (
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -1862,29 +2055,30 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 className="relative w-full h-full preserve-3d cursor-pointer"
               >
                 {/* Front (Question) */}
-                <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white">
-                  <div className="mb-8 shrink-0">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Question</span>
+                <div className="absolute inset-0 backface-hidden notion-card p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-white rounded-3xl">
+                  <div className="mb-6 shrink-0">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Question</span>
                   </div>
-                  <div className="w-full max-h-[60vh] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-2xl sm:text-3xl font-semibold leading-snug text-[#37352f] max-w-xl mx-auto break-words">{card.front}</p>
+                  <div className="w-full max-h-[250px] sm:max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-2xl sm:text-4xl font-bold leading-tight text-[#37352f] max-w-xl mx-auto break-words">{card.front}</p>
                   </div>
-                  <div className="mt-12 flex flex-col items-center gap-2 shrink-0">
-                    <p className="text-xs text-gray-300 font-medium uppercase tracking-widest">Click or Space to reveal answer</p>
-                    <div className="w-1 h-1 rounded-full bg-[#ff6b00] animate-bounce" />
+                  <div className="mt-10 flex flex-col items-center gap-2 shrink-0">
+                    <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click or Space to reveal answer</p>
+                    <div className="w-8 h-1 bg-gray-100 rounded-full" />
                   </div>
                 </div>
 
                 {/* Back (Answer) */}
-                <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none">
-                  <div className="mb-8">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-3 py-1 rounded-full">Answer</span>
+                <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-[#fcfcfb] p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
+                  <div className="mb-6 shrink-0">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#ff6b00] font-black bg-[#ff6b00]/5 px-4 py-1.5 rounded-full border border-[#ff6b00]/10">Answer</span>
                   </div>
-                  <div className="w-full max-h-[60vh] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium break-words">{card.back}</p>
+                  <div className="w-full max-h-[250px] sm:max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-[#37352f] font-medium max-w-xl mx-auto break-words">{card.back}</p>
                   </div>
-                  <div className="mt-12">
-                    <p className="text-xs text-gray-300 font-medium uppercase tracking-widest">Click or Space to see question</p>
+                  <div className="mt-10 flex flex-col items-center gap-2 shrink-0">
+                    <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">Click or Space to see question</p>
+                    <div className="w-8 h-1 bg-gray-100 rounded-full" />
                   </div>
                 </div>
               </motion.div>
@@ -1897,22 +2091,22 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
               {/* Rating Buttons */}
               <div className="flex gap-4">
                 <button 
-                  onClick={() => onRate('Hard')}
-                  className="px-8 py-3 rounded-xl bg-red-50 text-red-600 border border-red-100 font-bold text-sm hover:bg-red-100 transition-all shadow-sm"
-                >
-                  Hard
-                </button>
-                <button 
-                  onClick={() => onRate('Medium')}
-                  className="px-8 py-3 rounded-xl bg-yellow-50 text-yellow-600 border border-yellow-100 font-bold text-sm hover:bg-yellow-100 transition-all shadow-sm"
-                >
-                  Medium
-                </button>
-                <button 
                   onClick={() => onRate('Easy')}
                   className="px-8 py-3 rounded-xl bg-green-50 text-green-600 border border-green-100 font-bold text-sm hover:bg-green-100 transition-all shadow-sm"
                 >
                   Easy
+                </button>
+                <button 
+                  onClick={() => onRate('Medium')}
+                  className="px-8 py-3 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 font-bold text-sm hover:bg-orange-100 transition-all shadow-sm"
+                >
+                  Moderate
+                </button>
+                <button 
+                  onClick={() => onRate('Hard')}
+                  className="px-8 py-3 rounded-xl bg-red-50 text-red-600 border border-red-100 font-bold text-sm hover:bg-red-100 transition-all shadow-sm"
+                >
+                  Hard
                 </button>
               </div>
 
