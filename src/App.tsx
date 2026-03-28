@@ -28,10 +28,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
-import { useStudyTracker } from './hooks/useStudyTracker';
+import { useStudyTracker, MasteryLevel } from './hooks/useStudyTracker';
 
 // --- Types ---
-type MasteryLevel = 'New' | 'Learning' | 'Review' | 'Mastered';
 type SortCriteria = 'created_at' | 'mastery_level' | 'alphabetical';
 
 interface Subject {
@@ -64,12 +63,19 @@ interface Profile {
   id: string;
   username: string | null;
   full_name: string | null;
-  avatar_url: string | null;
-  bio: string | null;
   created_at: string;
 }
 
 // --- Components ---
+
+const getMasteryDisplay = (level: MasteryLevel) => {
+  switch (level) {
+    case 'Mastered': return { label: 'Easy', classes: 'text-mastery-easy-text bg-mastery-easy-bg border-mastery-easy-border' };
+    case 'Review': return { label: 'Moderate', classes: 'text-mastery-moderate-text bg-mastery-moderate-bg border-mastery-moderate-border' };
+    case 'Learning': return { label: 'Hard', classes: 'text-mastery-hard-text bg-mastery-hard-bg border-mastery-hard-border' };
+    default: return { label: 'Hard', classes: 'text-mastery-hard-text bg-mastery-hard-bg border-mastery-hard-border' };
+  }
+};
 
 export default function App() {
   console.log('App component is executing');
@@ -116,6 +122,7 @@ export default function App() {
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
   const [newCardTags, setNewCardTags] = useState('');
+  const [newCardMastery, setNewCardMastery] = useState<MasteryLevel>('New');
   const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [isAddingDeck, setIsAddingDeck] = useState(false);
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -138,7 +145,14 @@ export default function App() {
   const [verificationSent, setVerificationSent] = useState(false);
 
   // UI States
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ushanj_theme');
+      if (saved !== null) return saved === 'dark';
+      return false; // Default to light
+    }
+    return false;
+  });
   const [alertModal, setAlertModal] = useState<{ title: string, message: string } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
@@ -156,6 +170,17 @@ export default function App() {
   }, [allFlashcards, selectedDeck]);
 
   const profile = useMemo(() => dbProfile as unknown as Profile | null, [dbProfile]);
+
+  // Theme effect
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('ushanj_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('ushanj_theme', 'light');
+    }
+  }, [darkMode]);
 
   // Set default selections
   useEffect(() => {
@@ -322,11 +347,12 @@ export default function App() {
     setIsCreatingCard(true);
     try {
       const tags = newCardTags.split(',').map(t => t.trim()).filter(t => t !== '');
-      await addFlashcard(newCardFront.trim(), newCardBack.trim(), selectedDeck.id, selectedSubject.id, tags);
+      await addFlashcard(newCardFront.trim(), newCardBack.trim(), selectedDeck.id, selectedSubject.id, tags, newCardMastery);
       
       setNewCardFront('');
       setNewCardBack('');
       setNewCardTags('');
+      setNewCardMastery('New');
       if (!keepOpen) {
         setIsAddingCard(false);
       }
@@ -540,7 +566,7 @@ export default function App() {
             className="notion-card bg-bg-secondary p-10 max-w-md w-full shadow-2xl shadow-black/5 space-y-8 text-center"
           >
             <div className="flex flex-col items-center gap-6">
-              <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-full shadow-inner text-green-600 dark:text-green-400">
+              <div className="p-6 bg-mastery-easy-bg rounded-full shadow-inner text-mastery-easy-text">
                 <Mail size={64} />
               </div>
               <div className="space-y-3">
@@ -629,7 +655,7 @@ export default function App() {
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 p-4 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs font-medium leading-relaxed"
+                className="bg-mastery-hard-bg border border-mastery-hard-border p-4 rounded-xl flex items-start gap-3 text-mastery-hard-text text-xs font-medium leading-relaxed"
               >
                 <XCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{authError}</span>
@@ -679,11 +705,7 @@ export default function App() {
               onClick={() => setIsProfileModalOpen(true)}
               className="w-12 h-12 rounded-full bg-bg-secondary border border-border-main flex items-center justify-center overflow-hidden hover:border-accent/20 transition-all group"
             >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <UserIcon size={20} className="text-text-secondary group-hover:text-accent transition-colors" />
-              )}
+              <UserIcon size={20} className="text-text-secondary group-hover:text-accent transition-colors" />
             </button>
             <div className="space-y-1">
               <h1 
@@ -1025,17 +1047,40 @@ export default function App() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Tags</label>
-                  <div className="flex items-center gap-3 bg-bg-main border border-border-main rounded-xl px-4 py-3 focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 transition-all">
-                    <Tag size={16} className="text-text-secondary" />
-                    <input 
-                      type="text"
-                      placeholder="e.g. important, exam, chapter1"
-                      value={newCardTags}
-                      onChange={(e) => setNewCardTags(e.target.value)}
-                      className="bg-transparent outline-none w-full text-sm text-text-main"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Tags</label>
+                    <div className="flex items-center gap-3 bg-bg-main border border-border-main rounded-xl px-4 py-3 focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/5 transition-all">
+                      <Tag size={16} className="text-text-secondary" />
+                      <input 
+                        type="text"
+                        placeholder="e.g. important, exam, chapter1"
+                        value={newCardTags}
+                        onChange={(e) => setNewCardTags(e.target.value)}
+                        className="bg-transparent outline-none w-full text-sm text-text-main"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase ml-1">Initial Mastery</label>
+                    <div className="flex gap-2">
+                      {(['Learning', 'Review', 'Mastered'] as MasteryLevel[]).map((level) => {
+                        const display = getMasteryDisplay(level);
+                        return (
+                          <button
+                            key={level}
+                            onClick={() => setNewCardMastery(level)}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all ${
+                              newCardMastery === level 
+                                ? `${display.classes} ring-2 ring-accent/20` 
+                                : 'bg-bg-main border-border-main text-text-secondary hover:border-accent/30'
+                            }`}
+                          >
+                            {display.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
@@ -1191,17 +1236,13 @@ const ProfileModal: React.FC<{
 }> = ({ profile, onClose, onUpdate, darkMode, setDarkMode, lastSyncTime, isSyncing }) => {
   const [username, setUsername] = useState(profile.username || '');
   const [fullName, setFullName] = useState(profile.full_name || '');
-  const [bio, setBio] = useState(profile.bio || '');
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
     await onUpdate({
       username: username || null,
-      full_name: fullName || null,
-      bio: bio || null,
-      avatar_url: avatarUrl || null
+      full_name: fullName || null
     });
     setIsSaving(false);
     onClose();
@@ -1231,11 +1272,7 @@ const ProfileModal: React.FC<{
 
           <div className="flex flex-col items-center gap-4">
             <div className="w-24 h-24 rounded-full bg-bg-main border-2 border-border-main flex items-center justify-center overflow-hidden relative group">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <UserIcon size={40} className="text-text-secondary opacity-30" />
-              )}
+              <UserIcon size={40} className="text-text-secondary opacity-30" />
             </div>
             <div className="text-center space-y-1">
               <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
@@ -1267,26 +1304,6 @@ const ProfileModal: React.FC<{
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none text-text-main"
                 placeholder="Your display name"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Avatar URL</label>
-              <input 
-                type="text" 
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none text-text-main"
-                placeholder="Link to your profile picture"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-widest text-text-secondary ml-1">Bio</label>
-              <textarea 
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={3}
-                className="w-full bg-bg-main border border-border-main rounded-xl focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all py-3 px-4 text-sm outline-none resize-none text-text-main"
-                placeholder="Tell us about yourself..."
               />
             </div>
 
@@ -1334,7 +1351,7 @@ const AlertModal: React.FC<{ title: string, message: string, onClose: () => void
       className="bg-bg-secondary w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
       onClick={e => e.stopPropagation()}
     >
-      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+      <div className="w-16 h-16 bg-mastery-easy-bg text-mastery-easy-text rounded-full flex items-center justify-center mx-auto">
         <Check size={32} />
       </div>
       <div className="space-y-2">
@@ -1365,7 +1382,7 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
       className="bg-bg-secondary w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center space-y-6"
       onClick={e => e.stopPropagation()}
     >
-      <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+      <div className="w-16 h-16 bg-mastery-hard-bg text-mastery-hard-text rounded-full flex items-center justify-center mx-auto">
         <Trash2 size={32} />
       </div>
       <div className="space-y-2">
@@ -1391,15 +1408,6 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
 );
 
 const FlashcardItem: React.FC<{ card: Flashcard, onClick: () => void }> = ({ card, onClick }) => {
-  const getMasteryDisplay = (level: MasteryLevel) => {
-    switch (level) {
-      case 'Mastered': return { label: 'Easy', classes: 'text-green-600 bg-green-50 border-green-100' };
-      case 'Review': return { label: 'Moderate', classes: 'text-orange-600 bg-orange-50 border-orange-100' };
-      case 'Learning': return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
-      default: return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
-    }
-  };
-
   const mastery = getMasteryDisplay(card.mastery_level);
 
   return (
@@ -1521,16 +1529,6 @@ interface DetailCardModalProps {
 
 const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit, onDelete, onRate }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-
-  const getMasteryDisplay = (level: MasteryLevel) => {
-    switch (level) {
-      case 'Mastered': return { label: 'Easy', classes: 'text-green-600 bg-green-50 border-green-100' };
-      case 'Review': return { label: 'Moderate', classes: 'text-orange-600 bg-orange-50 border-orange-100' };
-      case 'Learning': return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
-      default: return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
-    }
-  };
-
   const mastery = getMasteryDisplay(card.mastery_level);
 
   return (
@@ -1614,7 +1612,7 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             </button>
             <button 
               onClick={onDelete} 
-              className="notion-pill bg-bg-secondary hover:bg-red-50 text-red-600 border-red-100 text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
+              className="notion-pill bg-bg-secondary hover:bg-mastery-hard-bg text-mastery-hard-text border-mastery-hard-border text-xs font-bold flex items-center gap-2 px-6 py-3 shadow-lg hover:shadow-xl transition-all"
             >
               <Trash2 size={16} /> Delete
             </button>
@@ -1625,19 +1623,19 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             <div className="flex justify-center gap-3">
               <button 
                 onClick={() => onRate('Easy')}
-                className="notion-pill bg-white dark:bg-[#252525] hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-mastery-easy-bg text-mastery-easy-text border-mastery-easy-border text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Easy
               </button>
               <button 
                 onClick={() => onRate('Medium')}
-                className="notion-pill bg-white dark:bg-[#252525] hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-mastery-moderate-bg text-mastery-moderate-text border-mastery-moderate-border text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Moderate
               </button>
               <button 
                 onClick={() => onRate('Hard')}
-                className="notion-pill bg-white dark:bg-[#252525] hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40 text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
+                className="notion-pill bg-mastery-hard-bg text-mastery-hard-text border-mastery-hard-border text-xs font-bold px-6 py-2.5 shadow-md hover:shadow-lg transition-all"
               >
                 Hard
               </button>
@@ -1647,7 +1645,7 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           <div className="flex justify-center">
             <button 
               onClick={onClose} 
-              className="notion-pill bg-[#37352f] dark:bg-white text-white dark:text-black border-[#37352f] dark:border-white hover:bg-[#2e2c27] dark:hover:bg-gray-200 text-xs font-bold px-12 py-3 shadow-lg hover:shadow-xl transition-all"
+              className="notion-pill bg-text-main text-bg-main border-text-main text-xs font-bold px-12 py-3 shadow-lg hover:shadow-xl transition-all"
             >
               Close
             </button>
@@ -1741,7 +1739,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setShowDeleteConfirm(true)}
-            className="p-2 hover:bg-red-50 text-text-secondary hover:text-red-600 rounded-full transition-colors flex items-center gap-2"
+            className="p-2 hover:bg-mastery-hard-bg text-text-secondary hover:text-mastery-hard-text rounded-full transition-colors flex items-center gap-2"
             title="Delete or remove card"
           >
             <Trash2 size={20} />
@@ -1803,7 +1801,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 className="notion-card p-12 bg-bg-secondary shadow-2xl flex flex-col items-center justify-center text-center space-y-8 border-red-100"
               >
                 <div className="space-y-4">
-                  <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 bg-mastery-hard-bg text-mastery-hard-text rounded-full flex items-center justify-center mx-auto">
                     <Trash2 size={32} />
                   </div>
                   <h3 className="text-2xl font-bold text-text-main">Remove Card</h3>
@@ -1921,19 +1919,19 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
               <div className="flex gap-4">
                 <button 
                   onClick={() => onRate('Easy')}
-                  className="px-8 py-3 rounded-xl bg-green-50 text-green-600 border border-green-100 font-bold text-sm hover:bg-green-100 transition-all shadow-sm"
+                  className="px-8 py-3 rounded-xl bg-mastery-easy-bg text-mastery-easy-text border border-mastery-easy-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Easy
                 </button>
                 <button 
                   onClick={() => onRate('Medium')}
-                  className="px-8 py-3 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 font-bold text-sm hover:bg-orange-100 transition-all shadow-sm"
+                  className="px-8 py-3 rounded-xl bg-mastery-moderate-bg text-mastery-moderate-text border border-mastery-moderate-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Moderate
                 </button>
                 <button 
                   onClick={() => onRate('Hard')}
-                  className="px-8 py-3 rounded-xl bg-red-50 text-red-600 border border-red-100 font-bold text-sm hover:bg-red-100 transition-all shadow-sm"
+                  className="px-8 py-3 rounded-xl bg-mastery-hard-bg text-mastery-hard-text border border-mastery-hard-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Hard
                 </button>

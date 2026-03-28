@@ -4,6 +4,8 @@ import { db, LocalSubject, LocalDeck, LocalFlashcard, LocalProfile, SyncStatus }
 import { supabase } from '../supabase';
 import { User } from '@supabase/supabase-js';
 
+export type MasteryLevel = 'New' | 'Learning' | 'Review' | 'Mastered';
+
 export function useStudyTracker(user: User | null) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
@@ -206,6 +208,30 @@ export function useStudyTracker(user: User | null) {
       sync_status: 'pending_create'
     };
     await db.decks.add(newDeck);
+
+    // Add demo flashcard
+    const demoCardId = crypto.randomUUID();
+    const demoCard: LocalFlashcard = {
+      id: demoCardId,
+      front: "What is Ushanj?",
+      back: `UshanJ is your complete preparation partner — built for every student, for every competitive exam.
+Created by Abhishek Kumar, UshanJ was born from one simple belief: aspirants don’t just need more content — they need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.
+Today, UshanJ offers three powerful platforms to support your entire preparation journey:
+Ushanj.com is a full-featured web app with dedicated tracking tools for every major competitive exam. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.
+Ushanj Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.
+Ushanj Flashcards is a dedicated flashcard platform built specifically for competitive exam revision — helping you retain more in less time through active recall and spaced repetition.
+Whether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, UshanJ meets you where you are and gives you the tools to go further.
+Three platforms. Every exam. One preparation partner.`,
+      deck_id: id,
+      subject_id,
+      tags: ["demo", "welcome"],
+      mastery_level: 'New',
+      created_at: new Date().toISOString(),
+      user_id: user.id,
+      sync_status: 'pending_create'
+    };
+    await db.flashcards.add(demoCard);
+
     pushChanges();
   };
 
@@ -219,7 +245,7 @@ export function useStudyTracker(user: User | null) {
     pushChanges();
   };
 
-  const addFlashcard = async (front: string, back: string, deck_id: string, subject_id: string, tags: string[]) => {
+  const addFlashcard = async (front: string, back: string, deck_id: string, subject_id: string, tags: string[], mastery_level: MasteryLevel = 'New') => {
     if (!user) return;
     const id = crypto.randomUUID();
     const newCard: LocalFlashcard = {
@@ -229,7 +255,7 @@ export function useStudyTracker(user: User | null) {
       deck_id,
       subject_id,
       tags,
-      mastery_level: 'New',
+      mastery_level,
       created_at: new Date().toISOString(),
       user_id: user.id,
       sync_status: 'pending_create'

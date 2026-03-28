@@ -9,8 +9,18 @@
   --text-main: #000000;
   --text-secondary: #52525b;
   --border-main: #e4e4e7;
+  --border-card: rgba(55, 53, 47, 0.08);
   --accent: #ff6b00;
   --accent-foreground: #ffffff;
+  --mastery-easy-bg: #f0fdf4;
+  --mastery-easy-text: #166534;
+  --mastery-easy-border: #dcfce7;
+  --mastery-moderate-bg: #fff7ed;
+  --mastery-moderate-text: #9a3412;
+  --mastery-moderate-border: #ffedd5;
+  --mastery-hard-bg: #fef2f2;
+  --mastery-hard-text: #991b1b;
+  --mastery-hard-border: #fee2e2;
 }
 
 .dark {
@@ -20,8 +30,18 @@
   --text-main: #ffffff;
   --text-secondary: #a1a1aa;
   --border-main: #27272a;
+  --border-card: rgba(255, 255, 255, 0.08);
   --accent: #ffffff;
   --accent-foreground: #000000;
+  --mastery-easy-bg: rgba(22, 101, 52, 0.2);
+  --mastery-easy-text: #4ade80;
+  --mastery-easy-border: rgba(74, 222, 128, 0.2);
+  --mastery-moderate-bg: rgba(154, 52, 18, 0.2);
+  --mastery-moderate-text: #fb923c;
+  --mastery-moderate-border: rgba(251, 146, 60, 0.2);
+  --mastery-hard-bg: rgba(153, 27, 27, 0.2);
+  --mastery-hard-text: #f87171;
+  --mastery-hard-border: rgba(248, 113, 113, 0.2);
 }
 
 @theme {
@@ -29,9 +49,24 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-bg-main: var(--bg-main);
   --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card: var(--bg-card);
   --color-text-main: var(--text-main);
   --color-text-secondary: var(--text-secondary);
   --color-border-main: var(--border-main);
+  --color-border-card: var(--border-card);
+  --color-mastery-easy-bg: var(--mastery-easy-bg);
+  --color-mastery-easy-text: var(--mastery-easy-text);
+  --color-mastery-easy-border: var(--mastery-easy-border);
+  --color-mastery-moderate-bg: var(--mastery-moderate-bg);
+  --color-mastery-moderate-text: var(--mastery-moderate-text);
+  --color-mastery-moderate-border: var(--mastery-moderate-border);
+  --color-mastery-hard-bg: var(--mastery-hard-bg);
+  --color-mastery-hard-text: var(--mastery-hard-text);
+  --color-mastery-hard-border: var(--mastery-hard-border);
+}
+
+html {
+  transition: background-color 0.3s ease;
 }
 
 body {
@@ -49,23 +84,18 @@ body {
 }
 
 .notion-card {
-  border: 1px solid rgba(55, 53, 47, 0.08);
+  border: 1px solid var(--border-card);
   border-radius: 12px;
   background-color: var(--bg-card);
   transition: all 0.2s ease;
 }
 
-.dark .notion-card {
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
 .notion-card:hover {
-  border-color: rgba(255, 107, 0, 0.2);
+  border-color: var(--accent);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .dark .notion-card:hover {
-  border-color: rgba(255, 107, 0, 0.4);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
