@@ -507,7 +507,7 @@ export default function App() {
           <Brain size={64} className="text-accent" />
         </motion.div>
         <div className="flex flex-col items-center gap-2">
-          <h2 className="text-xl font-bold text-text-main tracking-tight">UshanJ Flashcards</h2>
+          <h2 className="text-xl font-bold text-text-main tracking-tight">Ushanj Flashcards</h2>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.3s]" />
             <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -531,9 +531,9 @@ export default function App() {
               <Brain size={48} className="text-accent" />
             </div>
             <div className="text-center space-y-1">
-              <h1 className="text-3xl font-bold tracking-normal text-text-main">UshanJ Flashcards</h1>
+              <h1 className="text-3xl font-bold tracking-normal text-text-main">Ushanj Flashcards</h1>
               <p className="text-text-secondary text-sm font-medium">
-                {authMode === 'login' ? 'Welcome back! Please sign in.' : 'Join UshanJ to start your journey.'}
+                {authMode === 'login' ? 'Welcome back! Please sign in.' : 'Join Ushanj to start your journey.'}
               </p>
             </div>
           </div>
