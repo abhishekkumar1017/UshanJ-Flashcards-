@@ -22,7 +22,8 @@ import {
   Settings,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
@@ -134,6 +135,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   // UI States
   const [darkMode, setDarkMode] = useState(true);
@@ -200,12 +202,22 @@ export default function App() {
     setIsAuthenticating(true);
     try {
       if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error, data } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setAlertModal({ title: "Check your email", message: "We've sent you a verification link. Please check your inbox." });
+        
+        // If Supabase automatically signs the user in (e.g. email confirmation disabled),
+        // we sign them out to force the "confirm email" flow the user requested.
+        if (data.session) {
+          await supabase.auth.signOut();
+        }
+        
+        setVerificationSent(true);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        
+        // If Supabase allows login without verification, we might want to check here
+        // but usually it's handled by Supabase settings.
       }
     } catch (error: any) {
       setAuthError(error.message);
@@ -519,6 +531,47 @@ export default function App() {
   }
 
   if (!user) {
+    if (verificationSent) {
+      return (
+        <div className="min-h-screen bg-bg-main flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="notion-card bg-bg-secondary p-10 max-w-md w-full shadow-2xl shadow-black/5 space-y-8 text-center"
+          >
+            <div className="flex flex-col items-center gap-6">
+              <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-full shadow-inner text-green-600 dark:text-green-400">
+                <Mail size={64} />
+              </div>
+              <div className="space-y-3">
+                <h1 className="text-3xl font-bold tracking-normal text-text-main">Verify your email</h1>
+                <p className="text-text-secondary text-sm font-medium leading-relaxed">
+                  We've sent a verification link to <span className="text-accent font-bold">{email}</span>. 
+                  Please check your inbox and click the link to confirm your account.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 space-y-4">
+              <p className="text-xs text-text-secondary">
+                Once confirmed, you can return here to sign in.
+              </p>
+              <button 
+                onClick={() => {
+                  setVerificationSent(false);
+                  setAuthMode('login');
+                  setAuthError(null);
+                }}
+                className="w-full bg-accent text-accent-foreground font-bold py-4 rounded-xl text-sm shadow-xl shadow-accent/20 hover:shadow-accent/40 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+              >
+                Back to Login
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-bg-main flex items-center justify-center p-4">
         <motion.div 
@@ -604,6 +657,7 @@ export default function App() {
               onClick={() => {
                 setAuthMode(authMode === 'login' ? 'signup' : 'login');
                 setAuthError(null);
+                setVerificationSent(false);
               }}
               className="text-sm font-bold text-accent hover:opacity-80 transition-all"
             >
