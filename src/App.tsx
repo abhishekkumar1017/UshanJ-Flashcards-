@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
+import { useStudyTracker } from './hooks/useStudyTracker';
 
 // --- Types ---
 type MasteryLevel = 'New' | 'Learning' | 'Review' | 'Mastered';
@@ -72,13 +73,31 @@ interface Profile {
 export default function App() {
   console.log('App component is executing');
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  
+  // Use the new study tracker hook
+  const {
+    subjects: allSubjects,
+    decks: allDecks,
+    flashcards: allFlashcards,
+    profile: dbProfile,
+    isSyncing,
+    lastSyncTime,
+    addSubject,
+    updateSubject,
+    deleteSubject,
+    addDeck,
+    updateDeck,
+    deleteDeck,
+    addFlashcard,
+    updateFlashcard,
+    deleteFlashcard,
+    updateProfile,
+    sync
+  } = useStudyTracker(user);
+
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [decks, setDecks] = useState<Deck[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,23 +135,40 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // Custom alert/confirm states
-  const [alertModal, setAlertModal] = useState<{ title: string; message: string } | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved === 'true';
-  });
+  // UI States
+  const [darkMode, setDarkMode] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ title: string, message: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
-  // Dark mode effect
+  // Derived data based on selections
+  const subjects = useMemo(() => allSubjects as unknown as Subject[], [allSubjects]);
+  
+  const decks = useMemo(() => {
+    if (!selectedSubject) return [];
+    return (allDecks as unknown as Deck[]).filter(d => d.subject_id === selectedSubject.id);
+  }, [allDecks, selectedSubject]);
+
+  const flashcards = useMemo(() => {
+    if (!selectedDeck) return [];
+    return (allFlashcards as unknown as Flashcard[]).filter(f => f.deck_id === selectedDeck.id);
+  }, [allFlashcards, selectedDeck]);
+
+  const profile = useMemo(() => dbProfile as unknown as Profile | null, [dbProfile]);
+
+  // Set default selections
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (subjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(subjects[0]);
     }
-    localStorage.setItem('darkMode', darkMode.toString());
-  }, [darkMode]);
+  }, [subjects, selectedSubject]);
+
+  useEffect(() => {
+    if (decks.length > 0 && !selectedDeck) {
+      setSelectedDeck(decks[0]);
+    } else if (decks.length === 0) {
+      setSelectedDeck(null);
+    }
+  }, [decks, selectedDeck]);
 
   // Auth listener
   useEffect(() => {
@@ -149,41 +185,9 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch profile when user changes
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
   const handleUpdateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return;
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      await updateProfile(updates);
       setAlertModal({ title: "Success", message: "Profile updated successfully!" });
     } catch (error: any) {
       setAlertModal({ title: "Error", message: error.message });
@@ -210,159 +214,24 @@ export default function App() {
     }
   };
 
-  // Fetch Subjects
+  // Auto-select first subject/deck if none selected
   useEffect(() => {
-    if (!user) {
-      setSubjects([]);
-      return;
+    if (subjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(subjects[0]);
     }
+  }, [subjects, selectedSubject]);
 
-    const fetchSubjects = async () => {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching subjects:', error);
-        return;
-      }
-      
-      const list = data.map(item => ({
-        id: item.id,
-        name: item.name,
-        created_at: item.created_at,
-        user_id: item.user_id
-      } as unknown as Subject));
-      
-      setSubjects(list);
-      if (list.length > 0 && !selectedSubject) {
-        setSelectedSubject(list[0]);
-      }
-    };
-
-    fetchSubjects();
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('subjects_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` }, () => {
-        fetchSubjects();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  // Fetch Decks when Subject changes
   useEffect(() => {
-    if (!user || !selectedSubject) {
-      setDecks([]);
+    if (decks.length > 0 && !selectedDeck) {
+      setSelectedDeck(decks[0]);
+    } else if (decks.length === 0) {
       setSelectedDeck(null);
-      return;
     }
+  }, [decks, selectedDeck]);
 
-    const fetchDecks = async () => {
-      const { data, error } = await supabase
-        .from('decks')
-        .select('*')
-        .eq('subject_id', selectedSubject.id)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching decks:', error);
-        return;
-      }
-      
-      const list = data.map(item => ({
-        id: item.id,
-        name: item.name,
-        subject_id: item.subject_id,
-        created_at: item.created_at,
-        user_id: item.user_id
-      } as unknown as Deck));
-      
-      setDecks(list);
-      if (list.length > 0 && !selectedDeck) {
-        setSelectedDeck(list[0]);
-      } else if (list.length === 0) {
-        setSelectedDeck(null);
-      }
-    };
-
-    fetchDecks();
-
-    const channel = supabase
-      .channel('decks_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` }, () => {
-        fetchDecks();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedSubject, user]);
-
-  const fetchFlashcards = useCallback(async () => {
-    if (!user || !selectedSubject || !selectedDeck) {
-      setFlashcards([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('flashcards')
-      .select('*')
-      .eq('deck_id', selectedDeck.id)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true });
-    
-    if (error) {
-      console.error('Error fetching flashcards:', error);
-      return;
-    }
-    
-    const list = data.map(item => ({
-      id: item.id,
-      front: item.front,
-      back: item.back,
-      deck_id: item.deck_id,
-      subject_id: item.subject_id,
-      tags: item.tags,
-      mastery_level: item.mastery_level,
-      last_reviewed: item.last_reviewed,
-      next_review_date: item.next_review_date,
-      created_at: item.created_at,
-      user_id: item.user_id
-    } as unknown as Flashcard));
-    
-    setFlashcards(list);
-  }, [selectedDeck, selectedSubject, user]);
+  // Auth listener
 
   // Fetch Flashcards when Deck or Subject changes
-  useEffect(() => {
-    if (!user || !selectedSubject || !selectedDeck) {
-      setFlashcards([]);
-      return;
-    }
-
-    fetchFlashcards();
-
-    const channel = supabase
-      .channel('flashcards_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'flashcards', filter: `user_id=eq.${user.id}` }, () => {
-        fetchFlashcards();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchFlashcards, user]);
 
   const sortedAndFilteredFlashcards = useMemo(() => {
     let result = flashcards.filter(card => {
@@ -417,14 +286,7 @@ export default function App() {
   const handleCreateSubject = async () => {
     if (!newSubjectName.trim() || !user) return;
     try {
-      const { error } = await supabase
-        .from('subjects')
-        .insert([{
-          name: newSubjectName.trim(),
-          user_id: user.id
-        }]);
-      
-      if (error) throw error;
+      await addSubject(newSubjectName.trim());
       setNewSubjectName('');
       setIsAddingSubject(false);
     } catch (error) {
@@ -435,33 +297,7 @@ export default function App() {
   const handleCreateDeck = async () => {
     if (!newDeckName.trim() || !selectedSubject || !user) return;
     try {
-      const { data: deckData, error: deckError } = await supabase
-        .from('decks')
-        .insert([{
-          name: newDeckName.trim(),
-          subject_id: selectedSubject.id,
-          user_id: user.id
-        }])
-        .select()
-        .single();
-
-      if (deckError) throw deckError;
-
-      // Add demo flashcard
-      const { error: cardError } = await supabase
-        .from('flashcards')
-        .insert([{
-          front: "what is UshanJ",
-          back: "UshanJ is your complete preparation partner — built for every student, for every competitive exam.\n\nCreated by Abhishek Kumar, UshanJ was born from one simple belief: aspirants don’t just need more content — they need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.\n\nToday, UshanJ offers three powerful platforms to support your entire preparation journey:\n\nUshanj.com is a full-featured web app with dedicated tracking tools for every major competitive exam. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.\n\nUshanj Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.\n\nUshanj Flashcards is a dedicated flashcard platform built specifically for competitive exam revision — helping you retain more in less time through active recall and spaced repetition.\n\nWhether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, UshanJ meets you where you are and gives you the tools to go further.\n\nThree platforms. Every exam. One preparation partner.",
-          deck_id: deckData.id,
-          subject_id: selectedSubject.id,
-          user_id: user.id,
-          tags: ["UshanJ", "Demo"],
-          mastery_level: 'New'
-        }]);
-
-      if (cardError) throw cardError;
-
+      await addDeck(newDeckName.trim(), selectedSubject.id);
       setNewDeckName('');
       setIsAddingDeck(false);
     } catch (error) {
@@ -474,19 +310,8 @@ export default function App() {
     setIsCreatingCard(true);
     try {
       const tags = newCardTags.split(',').map(t => t.trim()).filter(t => t !== '');
-      const { error } = await supabase
-        .from('flashcards')
-        .insert([{
-          front: newCardFront.trim(),
-          back: newCardBack.trim(),
-          deck_id: selectedDeck.id,
-          subject_id: selectedSubject.id,
-          user_id: user.id,
-          tags: tags,
-          mastery_level: 'New'
-        }]);
+      await addFlashcard(newCardFront.trim(), newCardBack.trim(), selectedDeck.id, selectedSubject.id, tags);
       
-      if (error) throw error;
       setNewCardFront('');
       setNewCardBack('');
       setNewCardTags('');
@@ -502,16 +327,11 @@ export default function App() {
 
   const handleUpdateCard = async (id: string, front: string, back: string, tags: string[]) => {
     try {
-      const { error } = await supabase
-        .from('flashcards')
-        .update({
-          front: front.trim(),
-          back: back.trim(),
-          tags: tags
-        })
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateFlashcard(id, {
+        front: front.trim(),
+        back: back.trim(),
+        tags: tags
+      });
       setEditingCard(null);
     } catch (error) {
       console.error('Error updating card:', error);
@@ -544,15 +364,10 @@ export default function App() {
     if (rating === 'Hard') newMastery = 'Learning';
 
     try {
-      const { error } = await supabase
-        .from('flashcards')
-        .update({ 
-          mastery_level: newMastery, 
-          last_reviewed: new Date().toISOString() 
-        })
-        .eq('id', id);
-
-      if (error) throw error;
+      await updateFlashcard(id, { 
+        mastery_level: newMastery, 
+        last_reviewed: new Date().toISOString() 
+      });
     } catch (error) {
       console.error('Error rating card:', error);
       throw error;
@@ -579,29 +394,8 @@ export default function App() {
   const startSubjectStudy = async (subject_id: string) => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('flashcards')
-        .select('*')
-        .eq('subject_id', subject_id)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      const cards = data.map(item => ({
-        id: item.id,
-        front: item.front,
-        back: item.back,
-        deck_id: item.deck_id,
-        subject_id: item.subject_id,
-        tags: item.tags,
-        mastery_level: item.mastery_level,
-        last_reviewed: item.last_reviewed,
-        next_review_date: item.next_review_date,
-        created_at: item.created_at,
-        user_id: item.user_id
-      } as unknown as Flashcard));
-      
-      startStudySession(cards);
+      const subjectCards = (allFlashcards as unknown as Flashcard[]).filter(f => f.subject_id === subject_id);
+      startStudySession(subjectCards);
     } catch (error) {
       console.error('Error starting subject study:', error);
     }
@@ -610,12 +404,7 @@ export default function App() {
   const handleUpdateSubject = async () => {
     if (!editingSubject || !editSubjectName.trim()) return;
     try {
-      const { error } = await supabase
-        .from('subjects')
-        .update({ name: editSubjectName.trim() })
-        .eq('id', editingSubject.id);
-      
-      if (error) throw error;
+      await updateSubject(editingSubject.id, editSubjectName.trim());
       setEditingSubject(null);
       setEditSubjectName('');
     } catch (error) {
@@ -626,12 +415,7 @@ export default function App() {
   const handleUpdateDeck = async () => {
     if (!editingDeck || !editDeckName.trim()) return;
     try {
-      const { error } = await supabase
-        .from('decks')
-        .update({ name: editDeckName.trim() })
-        .eq('id', editingDeck.id);
-      
-      if (error) throw error;
+      await updateDeck(editingDeck.id, editDeckName.trim());
       setEditingDeck(null);
       setEditDeckName('');
     } catch (error) {
@@ -644,23 +428,10 @@ export default function App() {
       title: 'Delete Subject?',
       message: 'This will permanently delete the subject and all its decks and flashcards.',
       onConfirm: async () => {
-        // Optimistic update
-        setSubjects(prev => prev.filter(s => s.id !== id));
         if (selectedSubject?.id === id) setSelectedSubject(null);
         setConfirmModal(null);
-
         try {
-          const { error } = await supabase
-            .from('subjects')
-            .delete()
-            .eq('id', id);
-          
-          if (error) {
-            console.error('Error deleting subject:', error);
-            // Re-fetch to sync
-            const { data } = await supabase.from('subjects').select('*').eq('user_id', user?.id).order('created_at', { ascending: true });
-            if (data) setSubjects(data);
-          }
+          await deleteSubject(id);
         } catch (error) {
           console.error('Error deleting subject:', error);
         }
@@ -673,25 +444,10 @@ export default function App() {
       title: 'Delete Deck?',
       message: 'This will permanently delete the deck and all its flashcards.',
       onConfirm: async () => {
-        // Optimistic update
-        setDecks(prev => prev.filter(d => d.id !== id));
         if (selectedDeck?.id === id) setSelectedDeck(null);
         setConfirmModal(null);
-
         try {
-          const { error } = await supabase
-            .from('decks')
-            .delete()
-            .eq('id', id);
-          
-          if (error) {
-            console.error('Error deleting deck:', error);
-            // Re-fetch to sync
-            if (selectedSubject) {
-              const { data } = await supabase.from('decks').select('*').eq('subject_id', selectedSubject.id).eq('user_id', user?.id).order('created_at', { ascending: true });
-              if (data) setDecks(data);
-            }
-          }
+          await deleteDeck(id);
         } catch (error) {
           console.error('Error deleting deck:', error);
         }
@@ -704,23 +460,10 @@ export default function App() {
       title: 'Delete Card?',
       message: 'Are you sure you want to delete this flashcard?',
       onConfirm: async () => {
-        // Optimistic update
-        setFlashcards(prev => prev.filter(c => c.id !== id));
         setDetailCard(null);
         setConfirmModal(null);
-
         try {
-          const { error } = await supabase
-            .from('flashcards')
-            .delete()
-            .eq('id', id);
-          
-          if (error) {
-            // Rollback if error
-            console.error('Error deleting card:', error);
-            // Re-fetch to sync
-            fetchFlashcards();
-          }
+          await deleteFlashcard(id);
         } catch (error) {
           console.error('Error deleting card:', error);
         }
@@ -730,19 +473,8 @@ export default function App() {
 
   const handleDeleteStudyCard = async (id: string, permanent: boolean) => {
     if (permanent) {
-      // Optimistic update for main list
-      setFlashcards(prev => prev.filter(c => c.id !== id));
-      
       try {
-        const { error } = await supabase
-          .from('flashcards')
-          .delete()
-          .eq('id', id);
-        
-        if (error) {
-          console.error('Error deleting study card:', error);
-          fetchFlashcards(); // Re-sync if error
-        }
+        await deleteFlashcard(id);
       } catch (error) {
         console.error('Error deleting study card:', error);
       }
@@ -911,6 +643,12 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {isSyncing && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/5 border border-accent/10 animate-pulse">
+                <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Syncing</span>
+              </div>
+            )}
             <button 
               onClick={() => setDarkMode(!darkMode)}
               className="notion-pill text-xs font-bold text-text-secondary hover:text-accent transition-colors flex items-center gap-2 border-border-main"
@@ -1108,14 +846,14 @@ export default function App() {
                     value={newDeckName}
                     onChange={(e) => setNewDeckName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateDeck()}
-                    className="notion-pill text-sm font-bold w-32 outline-none bg-white dark:bg-[#252525] dark:text-white dark:border-gray-800"
+                    className="notion-pill text-sm font-bold w-32 outline-none bg-bg-main text-text-main border-border-main"
                     placeholder="Deck name..."
                   />
-                  <button onClick={handleCreateDeck} className="p-1 hover:text-[#ff6b00] flex items-center gap-1 text-xs font-bold dark:text-gray-400">
+                  <button onClick={handleCreateDeck} className="p-1 hover:text-accent flex items-center gap-1 text-xs font-bold text-text-secondary">
                     <Check size={18} />
                     <span>Save</span>
                   </button>
-                  <button onClick={() => setIsAddingDeck(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold dark:text-gray-400">
+                  <button onClick={() => setIsAddingDeck(false)} className="p-1 hover:text-red-600 flex items-center gap-1 text-xs font-bold text-text-secondary">
                     <X size={18} />
                     <span>Cancel</span>
                   </button>
@@ -1123,14 +861,14 @@ export default function App() {
               ) : (
                 <button 
                   onClick={() => setIsAddingDeck(true)}
-                  className="notion-pill bg-white dark:bg-[#252525] hover:bg-gray-50 dark:hover:bg-[#2f2f2f] transition-colors shrink-0 flex items-center gap-2 dark:text-gray-300 dark:border-gray-800"
+                  className="notion-pill bg-bg-main hover:bg-bg-secondary transition-colors shrink-0 flex items-center gap-2 text-text-secondary border-border-main"
                 >
                   <PlusCircle size={18} />
                   <span>Add Deck</span>
                 </button>
               )
             )}
-            {!selectedSubject && <p className="text-sm text-gray-400 dark:text-gray-500 italic">Select a subject first</p>}
+            {!selectedSubject && <p className="text-sm text-text-secondary italic opacity-50">Select a subject first</p>}
           </div>
         </section>
 
@@ -1138,7 +876,7 @@ export default function App() {
         <section className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h2 className="text-xl font-bold dark:text-white">Flashcards</h2>
+              <h2 className="text-xl font-bold text-text-main">Flashcards</h2>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 bg-bg-secondary border border-border-main rounded-lg px-3 py-2">
@@ -1177,7 +915,7 @@ export default function App() {
           {/* Advanced Filters */}
           {allUniqueTags.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 mr-2">
+              <div className="flex items-center gap-2 text-text-secondary mr-2">
                 <Filter size={14} />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Filter Tags:</span>
               </div>
@@ -1379,6 +1117,8 @@ export default function App() {
               onUpdate={handleUpdateProfile}
               darkMode={darkMode}
               setDarkMode={setDarkMode}
+              lastSyncTime={lastSyncTime}
+              isSyncing={isSyncing}
             />
           )}
         </AnimatePresence>
@@ -1391,8 +1131,10 @@ const ProfileModal: React.FC<{
   onClose: () => void, 
   onUpdate: (updates: Partial<Profile>) => Promise<void>,
   darkMode: boolean,
-  setDarkMode: (dark: boolean) => void
-}> = ({ profile, onClose, onUpdate, darkMode, setDarkMode }) => {
+  setDarkMode: (dark: boolean) => void,
+  lastSyncTime: number,
+  isSyncing: boolean
+}> = ({ profile, onClose, onUpdate, darkMode, setDarkMode, lastSyncTime, isSyncing }) => {
   const [username, setUsername] = useState(profile.username || '');
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [bio, setBio] = useState(profile.bio || '');
@@ -1441,7 +1183,15 @@ const ProfileModal: React.FC<{
                 <UserIcon size={40} className="text-text-secondary opacity-30" />
               )}
             </div>
-            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
+            <div className="text-center space-y-1">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">User ID: {profile.id.slice(0, 8)}...</p>
+              <div className="flex items-center justify-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-accent animate-pulse' : 'bg-green-500'}`} />
+                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">
+                  {isSyncing ? 'Syncing...' : lastSyncTime > 0 ? `Synced ${new Date(lastSyncTime).toLocaleTimeString()}` : 'Not synced yet'}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -1587,14 +1337,28 @@ const ConfirmModal: React.FC<{ title: string, message: string, onConfirm: () => 
 );
 
 const FlashcardItem: React.FC<{ card: Flashcard, onClick: () => void }> = ({ card, onClick }) => {
+  const getMasteryDisplay = (level: MasteryLevel) => {
+    switch (level) {
+      case 'Mastered': return { label: 'Easy', classes: 'text-green-600 bg-green-50 border-green-100' };
+      case 'Review': return { label: 'Moderate', classes: 'text-orange-600 bg-orange-50 border-orange-100' };
+      case 'Learning': return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
+      default: return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
+    }
+  };
+
+  const mastery = getMasteryDisplay(card.mastery_level);
+
   return (
     <div className="w-full">
       <div 
         onClick={onClick}
-        className="w-full h-44 p-5 flex flex-col hover:bg-bg-secondary rounded-xl transition-all cursor-pointer group border border-accent/20 hover:border-accent/40 shadow-sm hover:shadow-md"
+        className="w-full h-44 p-5 flex flex-col hover:bg-bg-secondary rounded-xl transition-all cursor-pointer group border border-accent/20 hover:border-accent/40 shadow-sm hover:shadow-md relative"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] uppercase tracking-wider text-accent font-bold">Question</span>
+          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${mastery.classes}`}>
+            {mastery.label}
+          </div>
         </div>
         
         <div className="flex-1 flex items-center justify-center text-center px-2 overflow-y-auto custom-scrollbar">
@@ -1704,14 +1468,16 @@ interface DetailCardModalProps {
 const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit, onDelete, onRate }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const getMasteryColor = (level: MasteryLevel) => {
+  const getMasteryDisplay = (level: MasteryLevel) => {
     switch (level) {
-      case 'Mastered': return 'text-green-600 bg-green-50 border-green-100';
-      case 'Review': return 'text-accent bg-accent/5 border-accent/10';
-      case 'Learning': return 'text-blue-600 bg-blue-50 border-blue-100';
-      default: return 'text-text-secondary bg-bg-secondary border-border-main';
+      case 'Mastered': return { label: 'Easy', classes: 'text-green-600 bg-green-50 border-green-100' };
+      case 'Review': return { label: 'Moderate', classes: 'text-orange-600 bg-orange-50 border-orange-100' };
+      case 'Learning': return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
+      default: return { label: 'Hard', classes: 'text-red-600 bg-red-50 border-red-100' };
     }
   };
+
+  const mastery = getMasteryDisplay(card.mastery_level);
 
   return (
     <motion.div 
@@ -1747,8 +1513,8 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             {/* Front */}
             <div className="absolute inset-0 backface-hidden notion-card p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none bg-bg-secondary rounded-3xl">
               {/* Mastery Badge */}
-              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${getMasteryColor(card.mastery_level)}`}>
-                {card.mastery_level === 'Review' ? 'Moderate' : card.mastery_level}
+              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${mastery.classes}`}>
+                {mastery.label}
               </div>
               
               <div className="mb-8 shrink-0">
@@ -1766,8 +1532,8 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
             {/* Back */}
             <div className="absolute inset-0 backface-hidden rotate-y-180 notion-card bg-bg-secondary p-12 flex flex-col items-center justify-center text-center shadow-2xl border-none rounded-3xl">
               {/* Mastery Badge */}
-              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${getMasteryColor(card.mastery_level)}`}>
-                {card.mastery_level === 'Review' ? 'Moderate' : card.mastery_level}
+              <div className={`absolute top-6 right-6 px-3 py-1 rounded-full text-[10px] font-bold border ${mastery.classes}`}>
+                {mastery.label}
               </div>
 
               <div className="mb-8 shrink-0">
