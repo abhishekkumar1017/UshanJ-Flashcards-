@@ -143,7 +143,7 @@ button.notion-pill,
 .notion-pill.active {
   background-color: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: var(--accent-foreground);
 }
 
 .notion-input {
