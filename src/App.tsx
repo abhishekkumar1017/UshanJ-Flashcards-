@@ -23,7 +23,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  Mail
+  Mail,
+  Youtube
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
@@ -1593,6 +1594,20 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
               </div>
               <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
                 <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-text-main font-medium break-words">{card.back}</p>
+                {card.tags?.includes('demo') && card.front.includes('Ushanj') && (
+                  <div className="mt-8 flex justify-center">
+                    <a 
+                      href="https://youtube.com/@ushanj.com_yt?si=o6IeQX50CVkBkqrb" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 bg-[#FF0000] text-white px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-all shadow-lg shadow-red-500/20"
+                    >
+                      <Youtube size={20} />
+                      Subscribe on YouTube
+                    </a>
+                  </div>
+                )}
               </div>
               <div className="mt-12 shrink-0 flex flex-col items-center gap-2">
                 <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Click to flip</p>
@@ -1902,6 +1917,20 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   </div>
                   <div className="w-full max-h-[250px] sm:max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
                     <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-medium max-w-xl mx-auto break-words">{card.back}</p>
+                    {card.tags?.includes('demo') && card.front.includes('Ushanj') && (
+                      <div className="mt-8 flex justify-center">
+                        <a 
+                          href="https://youtube.com/@ushanj.com_yt?si=o6IeQX50CVkBkqrb" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 bg-[#FF0000] text-white px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-all shadow-lg shadow-red-500/20"
+                        >
+                          <Youtube size={20} />
+                          Subscribe on YouTube
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-10 flex flex-col items-center gap-2 shrink-0">
                     <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest opacity-50">Click or Space to see question</p>
