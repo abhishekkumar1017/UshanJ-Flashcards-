@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Trash2, 
   PlusCircle, 
@@ -135,6 +135,30 @@ export default function App() {
   const [editSubjectName, setEditSubjectName] = useState('');
   const [editDeckName, setEditDeckName] = useState('');
   const [detailCard, setDetailCard] = useState<Flashcard | null>(null);
+
+  // Long press state
+  const [longPressItem, setLongPressItem] = useState<{
+    type: 'subject' | 'deck';
+    id: string;
+    name: string;
+  } | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressActive = useRef(false);
+
+  const handleLongPressStart = (item: any, type: 'subject' | 'deck') => {
+    isLongPressActive.current = false;
+    longPressTimer.current = setTimeout(() => {
+      isLongPressActive.current = true;
+      setLongPressItem({ type, id: item.id, name: item.name });
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
 
   // Auth form states
   const [email, setEmail] = useState('');
@@ -790,7 +814,15 @@ export default function App() {
                 ) : (
                   <>
                     <button 
-                      onClick={() => setSelectedSubject(subject)}
+                      onPointerDown={() => handleLongPressStart(subject, 'subject')}
+                      onPointerUp={handleLongPressEnd}
+                      onPointerLeave={handleLongPressEnd}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onClick={() => {
+                        if (!isLongPressActive.current) {
+                          setSelectedSubject(subject);
+                        }
+                      }}
                       className={`notion-pill text-sm font-bold transition-all ${selectedSubject?.id === subject.id ? 'active' : 'bg-bg-main text-text-secondary border-border-main'}`}
                     >
                       {subject.name}
@@ -886,7 +918,15 @@ export default function App() {
                 ) : (
                   <>
                     <button 
-                      onClick={() => setSelectedDeck(deck)}
+                      onPointerDown={() => handleLongPressStart(deck, 'deck')}
+                      onPointerUp={handleLongPressEnd}
+                      onPointerLeave={handleLongPressEnd}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onClick={() => {
+                        if (!isLongPressActive.current) {
+                          setSelectedDeck(deck);
+                        }
+                      }}
                       className={`notion-pill text-sm font-bold transition-all ${selectedDeck?.id === deck.id ? 'active' : 'bg-bg-main text-text-secondary border-border-main'}`}
                     >
                       {deck.name}
@@ -1219,6 +1259,38 @@ export default function App() {
               setDarkMode={setDarkMode}
               lastSyncTime={lastSyncTime}
               isSyncing={isSyncing}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Long Press Menu */}
+        <AnimatePresence>
+          {longPressItem && (
+            <LongPressMenu 
+              item={longPressItem}
+              onClose={() => setLongPressItem(null)}
+              onEdit={() => {
+                if (longPressItem.type === 'subject') {
+                  const subject = subjects.find(s => s.id === longPressItem.id);
+                  if (subject) {
+                    setEditingSubject(subject);
+                    setEditSubjectName(subject.name);
+                  }
+                } else {
+                  const deck = decks.find(d => d.id === longPressItem.id);
+                  if (deck) {
+                    setEditingDeck(deck);
+                    setEditDeckName(deck.name);
+                  }
+                }
+              }}
+              onDelete={() => {
+                if (longPressItem.type === 'subject') {
+                  handleDeleteSubject(longPressItem.id);
+                } else {
+                  handleDeleteDeck(longPressItem.id);
+                }
+              }}
             />
           )}
         </AnimatePresence>
@@ -2031,4 +2103,56 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
     </motion.div>
   );
 };
+const LongPressMenu: React.FC<{
+  item: { type: 'subject' | 'deck', id: string, name: string };
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ item, onClose, onEdit, onDelete }) => (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4"
+    onClick={onClose}
+  >
+    <motion.div 
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 100, opacity: 0 }}
+      className="w-full max-w-sm bg-bg-secondary rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl space-y-6 border border-border-main"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="text-center space-y-2 mb-4">
+        <div className="w-12 h-1.5 bg-border-main rounded-full mx-auto mb-6 sm:hidden" />
+        <h3 className="text-2xl font-black text-text-main tracking-tight">{item.name}</h3>
+        <p className="text-[10px] text-accent font-black uppercase tracking-[0.2em]">{item.type} Options</p>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-4">
+        <button 
+          onClick={() => { onEdit(); onClose(); }}
+          className="w-full py-5 bg-bg-main border-2 border-border-main rounded-2xl flex items-center justify-center gap-4 text-sm font-black text-text-main hover:border-accent hover:bg-bg-secondary transition-all active:scale-95 group"
+        >
+          <Edit3 size={22} className="text-accent group-hover:rotate-12 transition-transform" />
+          Edit {item.type}
+        </button>
+        <button 
+          onClick={() => { onDelete(); onClose(); }}
+          className="w-full py-5 bg-bg-main border-2 border-border-main rounded-2xl flex items-center justify-center gap-4 text-sm font-black text-red-500 hover:border-red-500 hover:bg-red-50/10 transition-all active:scale-95 group"
+        >
+          <Trash2 size={22} className="group-hover:shake transition-transform" />
+          Delete {item.type}
+        </button>
+        <button 
+          onClick={onClose}
+          className="w-full py-4 text-sm font-black text-text-secondary hover:text-text-main transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.div>
+  </motion.div>
+);
+
 // Trigger rebuild
