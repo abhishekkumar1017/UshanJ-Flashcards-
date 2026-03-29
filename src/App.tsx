@@ -207,7 +207,7 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Set default selections
+  // Set default selections and handle hierarchy
   useEffect(() => {
     if (subjects.length > 0 && !selectedSubject) {
       setSelectedSubject(subjects[0]);
@@ -215,9 +215,12 @@ export default function App() {
   }, [subjects, selectedSubject]);
 
   useEffect(() => {
-    if (decks.length > 0 && !selectedDeck) {
-      setSelectedDeck(decks[0]);
-    } else if (decks.length === 0) {
+    if (decks.length > 0) {
+      const isCurrentDeckValid = decks.some(d => d.id === selectedDeck?.id);
+      if (!isCurrentDeckValid) {
+        setSelectedDeck(decks[0]);
+      }
+    } else {
       setSelectedDeck(null);
     }
   }, [decks, selectedDeck]);
@@ -265,9 +268,6 @@ export default function App() {
       } else {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        
-        // If Supabase allows login without verification, we might want to check here
-        // but usually it's handled by Supabase settings.
       }
     } catch (error: any) {
       setAuthError(error.message);
@@ -275,25 +275,6 @@ export default function App() {
       setIsAuthenticating(false);
     }
   };
-
-  // Auto-select first subject/deck if none selected
-  useEffect(() => {
-    if (subjects.length > 0 && !selectedSubject) {
-      setSelectedSubject(subjects[0]);
-    }
-  }, [subjects, selectedSubject]);
-
-  useEffect(() => {
-    if (decks.length > 0 && !selectedDeck) {
-      setSelectedDeck(decks[0]);
-    } else if (decks.length === 0) {
-      setSelectedDeck(null);
-    }
-  }, [decks, selectedDeck]);
-
-  // Auth listener
-
-  // Fetch Flashcards when Deck or Subject changes
 
   const sortedAndFilteredFlashcards = useMemo(() => {
     let result = flashcards.filter(card => {
