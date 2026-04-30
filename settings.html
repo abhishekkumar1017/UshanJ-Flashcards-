@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - FlashCards</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F97316" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -228,8 +232,8 @@
 
     <nav class="navbar">
         <a href="index.html" class="logo">
-            <div class="logo-icon">🧠</div>
-            <span class="logo-text">Flash<span>Cards</span></span>
+            <img src="/icon.svg" width="24" height="24" style="color: var(--orange);" />
+            <span class="logo-text"><span>ushanj</span> flashcards</span>
         </a>
         <div class="nav-tabs">
             <a href="index.html" class="nav-tab">Dashboard</a>
@@ -240,16 +244,16 @@
             <a href="settings.html" class="nav-tab active">Settings</a>
         </div>
         <div class="nav-right">
-            <button class="create-btn">Create Card</button>
-            <div class="nav-avatar">L</div>
+            <button class="create-btn" onclick="window.location.href='index.html'">Create Card</button>
+            <div class="nav-avatar" id="nav-initial">U</div>
         </div>
     </nav>
 
     <aside class="sidebar">
         <div class="sidebar-user">
-            <div class="sidebar-avatar">L</div>
-            <div class="sidebar-name">Learner One</div>
-            <div class="sidebar-email">learner.one@example.com</div>
+            <div class="sidebar-avatar" id="sidebar-initial">U</div>
+            <div class="sidebar-name" id="sidebar-name-display">Learner</div>
+            <div class="sidebar-email" id="sidebar-email-display">learner@example.com</div>
         </div>
         <nav class="sidebar-nav">
             <a href="account.html#profile" class="sidebar-link">👤 Profile</a>
@@ -511,26 +515,51 @@
     <script>
         function setTheme(theme, el) {
             document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            if (theme === 'dark') document.body.classList.add('dark-theme');
-            else document.body.classList.remove('dark-theme');
-            showToast(`Theme set to ${theme}`);
+            if (el) el.classList.add('active');
+            else {
+                const card = document.querySelector(`.theme-card[onclick*="'${theme}'"]`);
+                if (card) card.classList.add('active');
+            }
+
+            if (theme === 'dark') {
+                document.body.classList.add('dark-theme');
+                localStorage.setItem('ushanj_theme', 'dark');
+            } else {
+                document.body.classList.remove('dark-theme');
+                localStorage.setItem('ushanj_theme', 'light');
+            }
+            if (el) showToast(`Theme set to ${theme}`);
         }
 
         function setAccent(color, el) {
             document.querySelectorAll('.color-dot').forEach(d => { d.classList.remove('active'); d.innerText = ''; });
-            el.classList.add('active');
-            el.innerText = '✓';
+            if (el) {
+                el.classList.add('active');
+                el.innerText = '✓';
+            } else {
+                const dot = Array.from(document.querySelectorAll('.color-dot')).find(d => d.style.backgroundColor.includes(color) || d.getAttribute('onclick')?.includes(color));
+                if (dot) {
+                    dot.classList.add('active');
+                    dot.innerText = '✓';
+                }
+            }
             document.documentElement.style.setProperty('--orange', color);
-            showToast('Accent color updated');
+            localStorage.setItem('ushanj_accent', color);
+            if (el) showToast('Accent color updated');
         }
 
         function setFontSize(size, el) {
             document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
+            if (el) el.classList.add('active');
+            else {
+                const btn = Array.from(document.querySelectorAll('.pill-btn')).find(b => b.innerText.toLowerCase() === size.toLowerCase());
+                if (btn) btn.classList.add('active');
+            }
+
             const sizes = { small: '13px', medium: '16px', large: '19px' };
             document.body.style.fontSize = sizes[size];
-            showToast(`Font size set to ${size}`);
+            localStorage.setItem('ushanj_font_size', size);
+            if (el) showToast(`Font size set to ${size}`);
         }
 
         function toggleReminder(checked) {
@@ -568,6 +597,35 @@
             input.onchange = e => { showToast('✓ Data imported successfully'); };
             input.click();
         }
+
+        function loadProfile() {
+            const saved = localStorage.getItem('ushanj_profile');
+            if (saved) {
+                const p = JSON.parse(saved);
+                const name = p.full_name || p.fullName || 'Learner';
+                const initial = name.charAt(0).toUpperCase();
+                
+                document.getElementById('sidebar-name-display').innerText = name;
+                document.getElementById('sidebar-email-display').innerText = p.email || '';
+                
+                document.querySelectorAll('#nav-initial, #sidebar-initial').forEach(el => {
+                    el.innerText = initial;
+                });
+            }
+        }
+
+        function loadSettings() {
+            const theme = localStorage.getItem('ushanj_theme') || 'light';
+            const accent = localStorage.getItem('ushanj_accent') || '#F97316';
+            const fontSize = localStorage.getItem('ushanj_font_size') || 'medium';
+            
+            setTheme(theme);
+            setAccent(accent);
+            setFontSize(fontSize);
+        }
+
+        loadProfile();
+        loadSettings();
 
         // Scroll Spy
         const sections = document.querySelectorAll('section[id]');

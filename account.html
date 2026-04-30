@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account - FlashCards</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F97316" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -282,21 +286,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .edit-camera-btn {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 28px;
-            height: 28px;
-            background: var(--orange);
-            border: 3px solid var(--white);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+
 
         .header-info-row {
             padding-left: 40px;
@@ -747,8 +737,8 @@
     <!-- NAVBAR -->
     <nav class="navbar">
         <a href="index.html" class="logo">
-            <div class="logo-icon">🧠</div>
-            <span class="logo-text">Flash<span>Cards</span></span>
+            <img src="/icon.svg" width="24" height="24" style="color: var(--orange);" />
+            <span class="logo-text"><span>ushanj</span> flashcards</span>
         </a>
         <div class="nav-tabs">
             <a href="index.html" class="nav-tab">Dashboard</a>
@@ -759,17 +749,17 @@
             <a href="settings.html" class="nav-tab">Settings</a>
         </div>
         <div class="nav-right">
-            <button class="create-btn" onclick="showToast('Feature coming soon')">Create Card</button>
-            <div class="nav-avatar">L</div>
+            <button class="create-btn" onclick="window.location.href='index.html'">Create Card</button>
+            <div class="nav-avatar" id="nav-initial">U</div>
         </div>
     </nav>
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-user">
-            <div class="sidebar-avatar-large">L</div>
-            <div class="sidebar-name" id="sidebar-name-display">Learner One</div>
-            <div class="sidebar-email" id="sidebar-email-display">learner.one@example.com</div>
+            <div class="sidebar-avatar-large" id="sidebar-initial">U</div>
+            <div class="sidebar-name" id="sidebar-name-display">Learner</div>
+            <div class="sidebar-email" id="sidebar-email-display">learner@example.com</div>
         </div>
         <nav class="sidebar-nav">
             <a href="#profile" class="sidebar-link active" data-id="profile">👤 Profile</a>
@@ -789,11 +779,7 @@
             <!-- Profile Header -->
             <section id="profile" class="profile-header-container">
                 <div class="banner">
-                    <div class="header-avatar-circle">L
-                        <div class="edit-camera-btn">
-                            <span style="color: white; font-size: 10px;">📷</span>
-                        </div>
-                    </div>
+                    <div class="header-avatar-circle" id="header-initial">U</div>
                 </div>
                 <div class="header-info-row">
                     <div class="header-name" id="header-name-display">Learner One</div>
@@ -953,7 +939,20 @@
         function init() {
             renderAchievements();
             loadProfile();
+            loadSettings();
             setupScrollSpy();
+        }
+
+        function loadSettings() {
+            const theme = localStorage.getItem('ushanj_theme') || 'light';
+            const accent = localStorage.getItem('ushanj_accent') || '#F97316';
+            const fontSize = localStorage.getItem('ushanj_font_size') || 'medium';
+            
+            if (theme === 'dark') document.body.classList.add('dark-theme');
+            document.documentElement.style.setProperty('--orange', accent);
+            
+            const sizes = { small: '13px', medium: '16px', large: '19px' };
+            document.body.style.fontSize = sizes[fontSize];
         }
 
         function renderAchievements() {
@@ -969,42 +968,41 @@
         }
 
         function loadProfile() {
-            const saved = localStorage.getItem('flashcards_user_profile');
+            const saved = localStorage.getItem('ushanj_profile');
             if (saved) {
                 const p = JSON.parse(saved);
-                document.getElementById('full-name-input').value = p.fullName;
-                document.getElementById('display-name-input').value = p.displayName;
-                document.getElementById('email-input').value = p.email;
-                document.getElementById('dob-input').value = p.dob;
-                document.getElementById('bio-input').value = p.bio;
+                document.getElementById('full-name-input').value = p.full_name || p.fullName || '';
+                document.getElementById('display-name-input').value = p.display_name || p.displayName || '';
+                document.getElementById('email-input').value = p.email || '';
+                document.getElementById('dob-input').value = p.dob || '';
+                document.getElementById('bio-input').value = p.bio || '';
                 updateDisplay(p);
             }
         }
 
         function updateDisplay(p) {
-            document.getElementById('header-name-display').innerText = p.fullName;
-            document.getElementById('sidebar-name-display').innerText = p.fullName;
-            document.getElementById('sidebar-email-display').innerText = p.email;
-            const initials = p.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            document.querySelectorAll('.sidebar-avatar-large, .nav-avatar, .header-avatar-circle').forEach(el => {
-                if(!el.classList.contains('header-avatar-circle')) el.innerText = initials;
-                else {
-                    const existingInitials = el.childNodes[0];
-                    if(existingInitials.nodeType === 3) existingInitials.nodeValue = initials;
-                    else el.prepend(initials);
-                }
+            const name = p.full_name || p.fullName || 'Learner';
+            document.getElementById('header-name-display').innerText = name;
+            document.getElementById('sidebar-name-display').innerText = name;
+            document.getElementById('sidebar-email-display').innerText = p.email || '';
+            const initial = name.charAt(0).toUpperCase();
+            
+            document.querySelectorAll('#nav-initial, #sidebar-initial, #header-initial').forEach(el => {
+                el.innerText = initial;
             });
         }
 
         function saveProfile() {
+            const oldProfile = JSON.parse(localStorage.getItem('ushanj_profile') || '{}');
             const profile = {
-                fullName: document.getElementById('full-name-input').value,
-                displayName: document.getElementById('display-name-input').value,
+                ...oldProfile,
+                full_name: document.getElementById('full-name-input').value,
+                display_name: document.getElementById('display-name-input').value,
                 email: document.getElementById('email-input').value,
                 dob: document.getElementById('dob-input').value,
                 bio: document.getElementById('bio-input').value
             };
-            localStorage.setItem('flashcards_user_profile', JSON.stringify(profile));
+            localStorage.setItem('ushanj_profile', JSON.stringify(profile));
             updateDisplay(profile);
             showToast('✓ Changes saved successfully');
         }

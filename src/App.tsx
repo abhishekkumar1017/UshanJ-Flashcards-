@@ -22,7 +22,8 @@ import {
   Settings,
   Sun,
   Moon,
-  Youtube
+  Youtube,
+  Feather
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
@@ -198,6 +199,13 @@ export default function App() {
 
   const profile = useMemo(() => dbProfile as unknown as Profile | null, [dbProfile]);
 
+  // Sync profile to localStorage for account.html and settings.html
+  useEffect(() => {
+    if (profile) {
+      localStorage.setItem('ushanj_profile', JSON.stringify(profile));
+    }
+  }, [profile]);
+
   // Theme effect
   useEffect(() => {
     if (darkMode) {
@@ -208,6 +216,20 @@ export default function App() {
       localStorage.setItem('ushanj_theme', 'light');
     }
   }, [darkMode]);
+
+  // Accent color and persistent settings effect
+  useEffect(() => {
+    const accent = localStorage.getItem('ushanj_accent');
+    if (accent) {
+      document.documentElement.style.setProperty('--accent', accent);
+    }
+    
+    const fontSize = localStorage.getItem('ushanj_font_size');
+    if (fontSize) {
+      const sizes = { small: '13px', medium: '16px', large: '19px' };
+      document.body.style.fontSize = sizes[fontSize as keyof typeof sizes];
+    }
+  }, []);
 
   // Set default selections and handle hierarchy
   useEffect(() => {
@@ -505,74 +527,93 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-bg-main transition-color duration-300">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-t-[3px] border-accent shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <Brain size={24} className="text-accent" />
-              <h1 className="text-2xl font-black tracking-tighter text-text-main">
-                Flash<span className="text-accent">Cards</span>
-              </h1>
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border-main transition-colors">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('dashboard')}>
+            <div className="w-10 h-10 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20 group-hover:rotate-12 transition-transform">
+              <Feather size={24} />
             </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tighter">
+              <span className="text-accent">ushanj</span> <span className="text-text-main">flashcards</span>
+            </h1>
           </div>
-          
-          <div className="flex items-center gap-6">
+
+          <div className="flex items-center gap-2 md:gap-6">
             <nav className="hidden md:flex items-center gap-1">
               {[
-                { id: 'dashboard', label: 'Dashboard', path: '#' },
-                { id: 'subjects', label: 'My Subjects', path: '#' },
-                { id: 'study', label: 'Study Mode', path: '#' },
-                { id: 'progress', label: 'Progress', path: '#' },
-                { id: 'account', label: 'Account', path: 'account.html' },
-                { id: 'settings', label: 'Settings', path: 'settings.html' }
+                { id: 'dashboard', label: 'Dashboard' },
+                { id: 'subjects', label: 'Subjects' },
+                { id: 'study', label: 'Study' },
+                { id: 'progress', label: 'Progress' }
               ].map(tab => (
-                tab.path === '#' ? (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setViewingDeck(null);
-                      setActiveTab(tab.id as any);
-                    }}
-                    className={`px-4 py-2 text-sm font-bold transition-all relative ${
-                      activeTab === tab.id ? 'text-accent' : 'text-text-secondary hover:text-text-main'
-                    }`}
-                  >
-                    {tab.label}
-                    {activeTab === tab.id && (
-                      <motion.div 
-                        layoutId="navUnderline"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
-                      />
-                    )}
-                  </button>
-                ) : (
-                  <a
-                    key={tab.id}
-                    href={tab.path}
-                    className="px-4 py-2 text-sm font-bold text-text-secondary hover:text-text-main transition-all"
-                  >
-                    {tab.label}
-                  </a>
-                )
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setViewingDeck(null);
+                    setActiveTab(tab.id as any);
+                  }}
+                  className={`px-4 py-2 text-sm font-bold transition-all relative ${
+                    activeTab === tab.id ? 'text-accent' : 'text-text-secondary hover:text-text-main'
+                  }`}
+                >
+                  {tab.label}
+                  {activeTab === tab.id && (
+                    <motion.div 
+                      layoutId="navUnderline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"
+                    />
+                  )}
+                </button>
               ))}
             </nav>
 
-            <div className="h-6 w-px bg-border-main" />
+            <div className="hidden sm:block h-6 w-px bg-border-main" />
 
             <button 
               onClick={() => setIsAddingCard(true)}
-              className="bg-accent text-white px-6 py-3 rounded-2xl text-sm font-black shadow-xl shadow-accent/20 hover:-translate-y-0.5 transition-all"
+              className="hidden sm:block bg-accent text-white px-6 py-3 rounded-2xl text-sm font-black shadow-xl shadow-accent/20 hover:-translate-y-0.5 transition-all"
             >
               Create Card
+            </button>
+            
+            <button 
+              onClick={() => setIsAddingCard(true)}
+              className="sm:hidden p-3 bg-accent text-white rounded-xl shadow-lg shadow-accent/20"
+            >
+              <PlusCircle size={20} />
             </button>
 
             <button 
               onClick={() => window.location.href = 'account.html'}
-              className="w-10 h-10 rounded-2xl bg-bg-secondary border border-border-main flex items-center justify-center group"
+              className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-lg shadow-accent/20 hover:scale-105 transition-all"
             >
-              <UserIcon size={20} className="text-text-secondary group-hover:text-accent" />
+              {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
             </button>
+          </div>
+        </div>
+        
+        {/* Mobile Nav */}
+        <div className="md:hidden flex overflow-x-auto px-4 py-2 bg-white/50 border-t border-border-main scrollbar-hide">
+          <div className="flex gap-2 mx-auto">
+            {[
+              { id: 'dashboard', label: 'Dashboard' },
+              { id: 'subjects', label: 'Subjects' },
+              { id: 'study', label: 'Study' },
+              { id: 'progress', label: 'Stats' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black whitespace-nowrap uppercase tracking-widest transition-all ${
+                  activeTab === tab.id 
+                    ? 'text-accent bg-accent/10 border-accent' 
+                    : 'text-text-secondary border-transparent'
+                } border-2`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </nav>
@@ -582,33 +623,33 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <>
             {/* Hero Section */}
-            <section className="bg-bg-secondary rounded-[2.5rem] p-10 md:p-16 relative overflow-hidden flex flex-col md:flex-row gap-12 items-center">
-              <div className="flex-1 space-y-6">
-                <span className="inline-block px-4 py-1.5 bg-white text-accent text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-sm">
+            <section className="bg-bg-secondary rounded-[2rem] md:rounded-[2.5rem] p-6 sm:p-10 md:p-16 relative overflow-hidden flex flex-col md:flex-row gap-8 md:gap-12 items-center">
+              <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
+                <span className="inline-block px-4 py-1.5 bg-white text-accent text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-sm">
                   Learning Portal
                 </span>
-                <h2 className="text-5xl font-black text-text-main leading-tight tracking-tight">
+                <h2 className="text-4xl sm:text-5xl font-black text-text-main leading-tight tracking-tight">
                   Hello, {profile?.full_name?.split(' ')[0] || 'Learner'}!
                 </h2>
-                <p className="text-text-secondary text-lg font-medium">
+                <p className="text-text-secondary text-base md:text-lg font-medium">
                   You've mastered <span className="text-accent font-black">{(allFlashcards.filter(f => f.mastery_level === 'Mastered').length)}</span> cards out of {allFlashcards.length}.
                 </p>
-                <div className="flex gap-4 pt-4">
+                <div className="flex justify-center md:justify-start gap-4 pt-2 md:pt-4">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Community Streak</span>
-                    <span className="text-xl font-black text-accent">{globalStats.studySessions.toLocaleString()} sessions</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Sessions</span>
+                    <span className="text-lg md:text-xl font-black text-accent">{globalStats.studySessions.toLocaleString()}</span>
                   </div>
                   <div className="w-px h-8 bg-border-main self-center" />
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Global Mastery</span>
-                    <span className="text-xl font-black text-accent">{globalStats.mastered.toLocaleString()} mastered</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Mastered</span>
+                    <span className="text-lg md:text-xl font-black text-accent">{globalStats.mastered.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 w-full space-y-8">
-                <div className="grid grid-cols-3 gap-4">
-                  <StatCard label="Total Cards" value={allFlashcards.length} isAccent />
+              <div className="flex-1 w-full space-y-6 md:space-y-8">
+                <div className="grid grid-cols-3 gap-3 md:gap-4">
+                  <StatCard label="Total" value={allFlashcards.length} isAccent />
                   <StatCard label="Subjects" value={allSubjects.length} />
                   <StatCard label="Decks" value={allDecks.length} />
                 </div>
@@ -616,17 +657,17 @@ export default function App() {
                   <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary" />
                   <input 
                     type="text"
-                    placeholder="Search your collection..."
+                    placeholder="Search collection..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-14 pr-6 py-5 bg-white rounded-2xl text-text-main font-bold outline-none shadow-sm focus:shadow-xl transition-all"
+                    className="w-full pl-14 pr-6 py-4 md:py-5 bg-white rounded-2xl text-text-main font-bold outline-none shadow-sm focus:shadow-xl transition-all"
                   />
                 </div>
               </div>
             </section>
 
             {/* Quick Actions Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <ActionButton 
                 icon={<PlusCircle className="text-accent" />} 
                 label="Create Card" 
@@ -674,7 +715,7 @@ export default function App() {
                         subject={subject}
                         active={selectedSubject?.id === subject.id}
                         count={allDecks.filter(d => d.subject_id === subject.id).length}
-                        onClick={() => setSelectedSubject(subject)}
+                        onClick={() => setSelectedSubject(prev => prev?.id === subject.id ? null : subject)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           setLongPressItem({ type: 'subject', id: subject.id, name: subject.name });
@@ -718,7 +759,109 @@ export default function App() {
                   </section>
                 )}
 
-                {/* Flashcards Grid */}
+                {/* Flashcards Section (Smart Visibility) */}
+                {!selectedDeck && (
+                  <section className="space-y-8">
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-2xl font-black text-[#111111] tracking-tight">
+                        Recent Flashcards
+                      </h3>
+                      <p className="text-sm font-medium">
+                        {selectedSubject ? (
+                          <>
+                            <span className="text-[#6B7280]">Showing latest from </span>
+                            <span className="text-[#F97316] font-bold">{selectedSubject.name}</span>
+                          </>
+                        ) : (
+                          <span className="text-[#6B7280]">Showing latest across all subjects</span>
+                        )}
+                      </p>
+                    </div>
+                    
+                    <div className="relative min-h-[200px]">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={selectedSubject ? selectedSubject.id : 'all'}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 10 }}
+                          transition={{ duration: 0.2 }}
+                          className="space-y-6"
+                        >
+                          {(() => {
+                            const filteredCards = selectedSubject 
+                              ? allFlashcards.filter(f => f.subject_id === selectedSubject.id)
+                              : allFlashcards;
+                            
+                            const sortedCards = [...filteredCards].sort((a, b) => 
+                              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                            );
+                            
+                            const displayCards = sortedCards.slice(0, 4);
+
+                            if (filteredCards.length === 0) {
+                              return (
+                                <div className="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                                  <p className="text-[#6B7280] font-bold mb-4">
+                                    {selectedSubject ? "No cards in this subject yet" : "No cards found. Create your first one!"}
+                                  </p>
+                                  <button 
+                                    onClick={() => setIsAddingCard(true)}
+                                    className="flex items-center gap-2 px-6 py-3 bg-[#F97316]/10 text-[#F97316] rounded-xl font-black text-sm hover:bg-[#F97316] hover:text-white transition-all shadow-sm"
+                                  >
+                                    <PlusCircle size={18} /> Add Card
+                                  </button>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  {displayCards.map(card => {
+                                    const deck = allDecks.find(d => d.id === card.deck_id);
+                                    const subject = subjects.find(s => s.id === (deck?.subject_id || card.subject_id));
+                                    return (
+                                      <RecentFlashcard 
+                                        key={card.id}
+                                        card={card}
+                                        subjectName={subject?.name}
+                                        deckName={deck?.name}
+                                        onClick={() => setDetailCard(card)}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                                
+                                {selectedSubject && filteredCards.length > 4 && (
+                                  <div className="flex justify-end">
+                                    <button 
+                                      onClick={() => {
+                                        // Find first deck in this subject to show detail or go to subjects tab
+                                        const deck = allDecks.find(d => d.subject_id === selectedSubject.id);
+                                        if (deck) {
+                                          setViewingDeck(deck);
+                                          setActiveTab('deck-detail');
+                                        } else {
+                                          setActiveTab('subjects');
+                                        }
+                                      }}
+                                      className="text-[#F97316] font-black text-sm flex items-center gap-2 hover:gap-3 transition-all"
+                                    >
+                                      View all <ArrowRight size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                  </section>
+                )}
+
+                {/* Flashcards Grid (When deck is selected) */}
                 {selectedDeck && (
                   <section className="space-y-8">
                     <div className="flex items-center justify-between border-b border-border-main pb-4">
@@ -798,16 +941,16 @@ export default function App() {
 
         {activeTab === 'subjects' && (
           <div className="space-y-12">
-            <div className="flex items-center justify-between">
-              <h2 className="text-4xl font-black text-text-main tracking-tight">Your Subjects</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <h2 className="text-3xl md:text-4xl font-black text-text-main tracking-tight">Your Subjects</h2>
               <button 
                 onClick={() => setIsAddingSubject(true)}
-                className="bg-accent text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-accent/20 transition-all hover:scale-105"
+                className="w-full sm:w-auto bg-accent text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-accent/20 transition-all hover:scale-105"
               >
                 Create New Subject
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {subjects.map((subject, idx) => (
                 <motion.div 
                   key={subject.id}
@@ -841,16 +984,16 @@ export default function App() {
         )}
 
         {activeTab === 'study' && (
-          <div className="max-w-4xl mx-auto space-y-12 text-center py-12">
+          <div className="max-w-4xl mx-auto space-y-12 text-center py-6 md:py-12 px-4">
             <div className="space-y-4">
-              <div className="w-24 h-24 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-8">
-                <Brain size={48} className="text-accent" />
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-8">
+                <Feather size={40} className="text-accent md:size-[48px]" />
               </div>
-              <h2 className="text-4xl font-black text-text-main tracking-tight">Ready to focus?</h2>
-              <p className="text-text-secondary text-lg font-medium">Choose what you want to study today and sharpen your knowledge.</p>
+              <h2 className="text-3xl md:text-4xl font-black text-text-main tracking-tight">Ready to focus?</h2>
+              <p className="text-text-secondary text-base md:text-lg font-medium">Choose what you want to study today and sharpen your knowledge.</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
               <button 
                 onClick={() => startStudySession(allFlashcards)}
                 className="bg-white p-10 rounded-[2.5rem] border-2 border-border-main hover:border-accent transition-all group shadow-subtle text-left space-y-6"
@@ -1299,10 +1442,10 @@ const ProfileModal: React.FC<{
       <motion.div 
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border border-border-main"
+        className="bg-white w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden border border-border-main"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-10 space-y-8">
+        <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-black text-text-main tracking-tight">Settings</h3>
             <button onClick={onClose} className="w-10 h-10 rounded-full bg-bg-secondary flex items-center justify-center text-text-secondary hover:text-red-500 transition-colors">
@@ -1311,8 +1454,8 @@ const ProfileModal: React.FC<{
           </div>
 
           <div className="flex flex-col items-center gap-6">
-            <div className="w-24 h-24 rounded-[2rem] bg-accent/10 border-2 border-accent/20 flex items-center justify-center overflow-hidden relative group">
-              <UserIcon size={40} className="text-accent" />
+            <div className="w-24 h-24 rounded-[2rem] bg-accent text-white flex items-center justify-center text-4xl font-black shadow-xl shadow-accent/20">
+              {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="text-center space-y-2">
               <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">{profile.id.slice(0, 8)}</p>
@@ -1772,22 +1915,26 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
       className="fixed inset-0 z-50 bg-bg-main flex flex-col"
     >
       {/* Header */}
-      <div className="p-6 flex items-center justify-between border-b border-border-main">
-        <div className="flex items-center gap-4">
+      <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between border-b border-border-main gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto gap-4">
           <button 
             onClick={onClose} 
             className="p-2 hover:bg-bg-secondary rounded-full transition-colors flex items-center gap-2"
             title="Exit Study Session"
           >
             <X size={24} className="text-text-main" />
-            <span className="text-sm font-bold text-text-secondary uppercase">Exit</span>
+            <span className="hidden sm:inline text-sm font-bold text-text-secondary uppercase">Exit</span>
           </button>
-          <div>
-            <h3 className="font-bold text-text-main">Study Session</h3>
-            <p className="text-xs text-text-secondary">Card {currentIndex + 1} of {cards.length}</p>
+          <div className="text-center sm:text-left">
+            <h3 className="font-bold text-text-main text-sm sm:text-base">Study Session</h3>
+            <p className="text-[10px] sm:text-xs text-text-secondary">Card {currentIndex + 1} of {cards.length}</p>
+          </div>
+          <div className="flex sm:hidden items-center gap-2">
+             <button onClick={onShuffle} className="p-2 text-text-secondary"><Shuffle size={18} /></button>
+             <button onClick={() => setIsEditing(!isEditing)} className="p-2 text-text-secondary"><Edit3 size={18} /></button>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="hidden sm:flex items-center gap-4">
           <button 
             onClick={() => setShowDeleteConfirm(true)}
             className="p-2 hover:bg-mastery-hard-bg text-text-secondary hover:text-mastery-hard-text rounded-full transition-colors flex items-center gap-2"
@@ -1844,7 +1991,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
           </div>
 
           {/* Card */}
-          <div className="perspective-1000 w-full h-[450px] sm:h-[500px]">
+          <div className="perspective-1000 w-full h-[380px] sm:h-[500px]">
             {showDeleteConfirm ? (
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -1955,49 +2102,49 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
 
           {/* Study Controls */}
           {!isEditing && (
-            <div className="flex flex-col items-center gap-8">
+            <div className="flex flex-col items-center gap-6 sm:gap-8">
               {/* Rating Buttons */}
-              <div className="flex gap-4">
+              <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-4 w-full sm:w-auto">
                 <button 
                   onClick={() => onRate('Easy')}
-                  className="px-8 py-3 rounded-xl bg-mastery-easy-bg text-mastery-easy-text border border-mastery-easy-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
+                  className="px-4 s:px-8 py-3 rounded-xl bg-mastery-easy-bg text-mastery-easy-text border border-mastery-easy-border font-bold text-xs sm:text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Easy
                 </button>
                 <button 
                   onClick={() => onRate('Medium')}
-                  className="px-8 py-3 rounded-xl bg-mastery-moderate-bg text-mastery-moderate-text border border-mastery-moderate-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
+                  className="px-4 s:px-8 py-3 rounded-xl bg-mastery-moderate-bg text-mastery-moderate-text border border-mastery-moderate-border font-bold text-xs sm:text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Moderate
                 </button>
                 <button 
                   onClick={() => onRate('Hard')}
-                  className="px-8 py-3 rounded-xl bg-mastery-hard-bg text-mastery-hard-text border border-mastery-hard-border font-bold text-sm hover:opacity-80 transition-all shadow-sm"
+                  className="px-4 s:px-8 py-3 rounded-xl bg-mastery-hard-bg text-mastery-hard-text border border-mastery-hard-border font-bold text-xs sm:text-sm hover:opacity-80 transition-all shadow-sm"
                 >
                   Hard
                 </button>
               </div>
 
-              <div className="flex items-center gap-12">
+              <div className="flex items-center gap-8 sm:gap-12">
                 <button 
                   disabled={currentIndex === 0}
                   onClick={onPrev}
                   className="group flex flex-col items-center gap-2 disabled:opacity-20 transition-all"
                 >
-                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
-                    <ArrowLeft size={24} className="text-text-secondary group-hover:text-accent" />
+                  <div className="p-3 sm:p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <ArrowLeft size={20} className="sm:size-[24px] text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Previous</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-text-secondary">Prev</span>
                 </button>
 
                 <button 
                   onClick={onShuffle}
                   className="group flex flex-col items-center gap-2 transition-all"
                 >
-                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
-                    <Shuffle size={24} className="text-text-secondary group-hover:text-accent" />
+                  <div className="p-3 sm:p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <Shuffle size={20} className="sm:size-[24px] text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Shuffle</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-text-secondary">Shuffle</span>
                 </button>
 
                 <button 
@@ -2005,15 +2152,15 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   onClick={onNext}
                   className="group flex flex-col items-center gap-2 disabled:opacity-20 transition-all"
                 >
-                  <div className="p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
-                    <ArrowRight size={24} className="text-text-secondary group-hover:text-accent" />
+                  <div className="p-3 sm:p-4 bg-bg-secondary border border-border-main rounded-full shadow-sm group-hover:shadow-md group-hover:border-accent/20 transition-all">
+                    <ArrowRight size={20} className="sm:size-[24px] text-text-secondary group-hover:text-accent" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Next</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-text-secondary">Next</span>
                 </button>
               </div>
 
               {/* Keyboard Hints */}
-              <div className="flex justify-center gap-6 text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50">
+              <div className="hidden sm:flex justify-center gap-6 text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-50">
                 <div className="flex items-center gap-2">
                   <span className="bg-bg-secondary px-1.5 py-0.5 rounded text-text-main">Space</span> Flip
                 </div>
@@ -2123,10 +2270,10 @@ const CreateCardModal: React.FC<{
       <motion.div 
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-border-main"
+        className="bg-white w-full max-w-2xl rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden border border-border-main mx-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-8 sm:p-10 space-y-8">
+        <div className="p-6 sm:p-10 space-y-6 md:space-y-8">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-2xl font-black text-text-main tracking-tight">Create Card</h3>
@@ -2239,6 +2386,60 @@ const ActionButton: React.FC<{ icon: React.ReactNode, label: string, onClick: ()
   </button>
 );
 
+// --- Helpers ---
+const timeAgo = (date: string) => {
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(date).toLocaleDateString();
+};
+
+const RecentFlashcard: React.FC<{ 
+  card: Flashcard, 
+  subjectName?: string, 
+  deckName?: string,
+  onClick: () => void 
+}> = ({ card, subjectName, deckName, onClick }) => (
+  <motion.div 
+    layout
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, scale: 0.95 }}
+    whileHover={{ y: -4 }}
+    onClick={onClick}
+    className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm hover:shadow-xl hover:border-[#F97316] group relative transition-all cursor-pointer flex flex-col justify-between h-48"
+  >
+    <div className="flex justify-between items-start mb-4">
+      <div className="w-8 h-8 bg-[#F97316] rounded-lg flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/20">
+        Q
+      </div>
+      {subjectName && (
+        <span className="px-3 py-1 bg-gray-100 text-[#6B7280] rounded-full text-[10px] font-bold uppercase tracking-wider">
+          {subjectName}
+        </span>
+      )}
+    </div>
+    
+    <p className="text-[#111111] font-semibold text-lg leading-snug line-clamp-2 grow mb-4">
+      {card.front}
+    </p>
+    
+    <div className="flex justify-between items-end border-t border-gray-50 pt-4 mt-auto">
+      <span className="text-xs font-medium text-[#6B7280] truncate max-w-[150px]">
+        {deckName || 'General Deck'}
+      </span>
+      <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">
+        {timeAgo(card.created_at)}
+      </span>
+    </div>
+  </motion.div>
+);
+
 const SubjectChip: React.FC<{ 
   subject: Subject, 
   active: boolean, 
@@ -2304,24 +2505,24 @@ const DeckCard: React.FC<{
 const DashboardFlashcard: React.FC<{ card: Flashcard, onClick: () => void, onEdit: () => void, onDelete: () => void }> = ({ card, onClick, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -4 }}
-    className="bg-white border border-border-main rounded-xl p-6 shadow-subtle hover:shadow-xl hover:border-accent group relative transition-all cursor-pointer"
+    className="bg-white border border-border-main rounded-xl p-4 sm:p-6 shadow-subtle hover:shadow-xl hover:border-accent group relative transition-all cursor-pointer"
     onClick={onClick}
   >
-    <div className="absolute top-4 left-4">
-      <span className="w-6 h-6 bg-accent/10 text-accent rounded-lg flex items-center justify-center font-black text-[10px]">Q</span>
+    <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
+      <span className="w-5 h-5 sm:w-6 sm:h-6 bg-accent/10 text-accent rounded-lg flex items-center justify-center font-black text-[9px] sm:text-[10px]">Q</span>
     </div>
-    <div className="py-6 min-h-[120px] flex items-center justify-center text-center">
-      <p className="text-base font-black text-text-main leading-tight tracking-tight line-clamp-3 group-hover:text-accent transition-colors">{card.front}</p>
+    <div className="py-4 sm:py-6 min-h-[100px] sm:min-h-[120px] flex items-center justify-center text-center">
+      <p className="text-sm sm:text-base font-black text-text-main leading-tight tracking-tight line-clamp-3 group-hover:text-accent transition-colors">{card.front}</p>
     </div>
-    <div className="pt-4 border-t border-border-main flex items-center justify-between">
+    <div className="pt-3 sm:pt-4 border-t border-border-main flex items-center justify-between">
       <div className="flex gap-1 overflow-hidden">
-        {card.tags?.slice(0, 2).map((t, idx) => (
+        {card.tags?.slice(0, 1).map((t, idx) => (
           <span key={idx} className="text-[8px] font-black uppercase tracking-widest text-text-secondary whitespace-nowrap">#{t}</span>
         ))}
       </div>
-      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-text-secondary hover:text-accent p-1"><Edit3 size={14} /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-text-secondary hover:text-red-500 p-1"><Trash2 size={14} /></button>
+      <div className="flex items-center gap-2 sm:gap-3 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 shrink-0">
+        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-text-secondary hover:text-accent p-1"><Edit3 size={12} className="sm:size-[14px]" /></button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-text-secondary hover:text-red-500 p-1"><Trash2 size={12} className="sm:size-[14px]" /></button>
       </div>
     </div>
   </motion.div>
