@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account - FlashCards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --white: #FFFFFF;
+            --orange: #F97316;
+            --black: #111111;
+            --light-grey: #F3F4F6;
+            --mid-grey: #6B7280;
+            --border-grey: #E5E7EB;
+            --red: #EF4444;
+            --red-light: #FEF2F2;
+            --green: #22C55E;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--white);
+            color: var(--black);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: var(--white);
+            border-top: 3px solid var(--orange);
+            border-bottom: 1px solid var(--border-grey);
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            margin-right: 40px;
+        }
+
+        .logo-icon {
+            color: var(--orange);
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 20px;
+            color: var(--black);
+        }
+
+        .logo-text span {
+            color: var(--orange);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            flex: 1;
+        }
+
+        .nav-tab {
+            text-decoration: none;
+            color: var(--mid-grey);
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            color: var(--black);
+            background: var(--light-grey);
+        }
+
+        .nav-tab.active {
+            color: var(--orange);
+            background: rgba(249, 115, 22, 0.08);
+            font-weight: 600;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .create-btn {
+            background: var(--orange);
+            color: var(--white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            top: 70px;
+            left: 0;
+            bottom: 0;
+            width: 260px;
+            background: var(--white);
+            border-right: 1px solid var(--border-grey);
+            padding: 40px 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 900;
+        }
+
+        .sidebar-user {
+            padding: 0 30px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .sidebar-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .sidebar-name {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--black);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-email {
+            font-size: 13px;
+            color: var(--mid-grey);
+        }
+
+        .sidebar-nav {
+            width: 100%;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 30px;
+            text-decoration: none;
+            color: var(--mid-grey);
+            font-size: 14px;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .sidebar-link:hover {
+            background: var(--light-grey);
+            color: var(--black);
+        }
+
+        .sidebar-link.active {
+            background: rgba(249, 115, 22, 0.05);
+            color: var(--orange);
+            border-left-color: var(--orange);
+            font-weight: 600;
+        }
+
+        .sidebar-link.logout {
+            margin-top: 20px;
+            color: var(--mid-grey);
+        }
+
+        .sidebar-link.logout:hover {
+            color: var(--red);
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: 260px;
+            margin-top: 70px;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .content-container {
+            width: 100%;
+            max-width: 780px;
+        }
+
+        section {
+            padding: 60px 0;
+            border-bottom: 1px solid var(--border-grey);
+        }
+
+        section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--black);
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--mid-grey);
+            margin-bottom: 30px;
+        }
+
+        /* Section 1: Profile Header */
+        .profile-header-container {
+            padding-top: 0;
+        }
+
+        .banner {
+            height: 120px;
+            background: var(--light-grey);
+            border-radius: 16px;
+            position: relative;
+            margin-bottom: 60px;
+        }
+
+        .header-avatar-circle {
+            position: absolute;
+            bottom: -40px;
+            left: 40px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--orange);
+            border: 4px solid var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 32px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .edit-camera-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 28px;
+            height: 28px;
+            background: var(--orange);
+            border: 3px solid var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .header-info-row {
+            padding-left: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-name {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .edit-profile-btn {
+            border: 2px solid var(--orange);
+            color: var(--orange);
+            background: transparent;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .edit-profile-btn:hover {
+            background: var(--orange);
+            color: var(--white);
+        }
+
+        /* Form Controls */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+        .field-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--mid-grey);
+        }
+
+        .input-field {
+            background: var(--white);
+            border: 1px solid var(--border-grey);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+        }
+
+        .email-field-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .verified-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--green);
+            white-space: nowrap;
+        }
+
+        .unverified-link {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--orange);
+            cursor: pointer;
+        }
+
+        textarea.input-field {
+            resize: none;
+        }
+
+        .form-actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-save {
+            background: var(--orange);
+            color: var(--white);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            color: var(--mid-grey);
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: var(--white);
+            border: 1px solid var(--border-grey);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .stat-big-num {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-big-num.orange {
+            color: var(--orange);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--mid-grey);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .stat-unit {
+            font-size: 14px;
+            color: var(--mid-grey);
+            font-weight: 400;
+        }
+
+        .mastery-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .mastery-progress-bar {
+            height: 12px;
+            background: var(--light-grey);
+            border-radius: 6px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .mastery-fill {
+            height: 100%;
+            background: var(--orange);
+            border-radius: 6px;
+            transition: width 1s ease;
+        }
+
+        /* Achievement Grid */
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .badge-card {
+            background: var(--white);
+            border: 1px solid var(--border-grey);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .badge-card.unlocked {
+            border-bottom: 3px solid var(--orange);
+        }
+
+        .badge-card.locked {
+            filter: grayscale(1);
+            opacity: 0.6;
+            border-bottom: 3px solid var(--border-grey);
+        }
+
+        .badge-emoji {
+            font-size: 48px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .badge-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .badge-desc {
+            font-size: 12px;
+            color: var(--mid-grey);
+            line-height: 1.4;
+        }
+
+        .badge-lock {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+        }
+
+        /* Danger Zone */
+        .danger-section-title {
+            color: #EF4444;
+        }
+
+        .danger-card {
+            background: var(--red-light);
+            border: 1px solid #FECACA;
+            border-radius: 16px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .danger-btn-outline {
+            border: 1px solid var(--red);
+            color: var(--red);
+            background: transparent;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: fit-content;
+        }
+
+        .danger-btn-solid {
+            background: var(--red);
+            color: var(--white);
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        /* MODALS */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(17, 17, 17, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 5000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background: var(--white);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            text-align: center;
+            animation: modalIn 0.3s ease-out;
+        }
+
+        .modal.large {
+            max-width: 500px;
+            text-align: left;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-icon-big {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--mid-grey);
+        }
+
+        .modal-desc {
+            font-size: 14px;
+            color: var(--mid-grey);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-modal-cancel {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border-grey);
+            background: transparent;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .btn-modal-red {
+            flex: 1;
+            padding: 12px;
+            background: var(--red);
+            color: var(--white);
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--black);
+            color: var(--white);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 6000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .navbar { padding: 0 20px; }
+            .nav-tabs { overflow-x: auto; padding-bottom: 5px; }
+            .sidebar {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                width: 100%;
+                height: 60px;
+                flex-direction: row;
+                border-right: none;
+                border-bottom: 1px solid var(--border-grey);
+                padding: 0;
+                background: var(--white);
+            }
+            .sidebar-user { display: none; }
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                height: 100%;
+                padding: 0 10px;
+            }
+            .sidebar-link {
+                height: 100%;
+                white-space: nowrap;
+                padding: 0 20px;
+                border-left: none;
+                border-bottom: 4px solid transparent;
+            }
+            .sidebar-link.active { border-bottom-color: var(--orange); border-left-color: transparent; }
+            .main-content { margin-left: 0; margin-top: 130px; padding: 20px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-actions { flex-direction: column; }
+            .badge-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+            .badge-grid { grid-template-columns: 1fr; }
+            .modal { margin: 20px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">🧠</div>
+            <span class="logo-text">Flash<span>Cards</span></span>
+        </a>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">Dashboard</a>
+            <a href="index.html" class="nav-tab">My Subjects</a>
+            <a href="index.html" class="nav-tab">Study Mode</a>
+            <a href="index.html" class="nav-tab">Progress</a>
+            <a href="account.html" class="nav-tab active">Account</a>
+            <a href="settings.html" class="nav-tab">Settings</a>
+        </div>
+        <div class="nav-right">
+            <button class="create-btn" onclick="showToast('Feature coming soon')">Create Card</button>
+            <div class="nav-avatar">L</div>
+        </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-user">
+            <div class="sidebar-avatar-large">L</div>
+            <div class="sidebar-name" id="sidebar-name-display">Learner One</div>
+            <div class="sidebar-email" id="sidebar-email-display">learner.one@example.com</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#profile" class="sidebar-link active" data-id="profile">👤 Profile</a>
+            <a href="#personal" class="sidebar-link" data-id="personal">🔐 Security</a>
+            <a href="#stats" class="sidebar-link" data-id="stats">📊 My Stats</a>
+            <a href="#achievements" class="sidebar-link" data-id="achievements">🏆 Achievements</a>
+            <a href="settings.html" class="sidebar-link">⚙️ Preferences</a>
+            <a href="settings.html" class="sidebar-link">🔔 Notifications</a>
+            <a href="#" class="sidebar-link logout" onclick="openConfirmModal('logout')">🚪 Logout</a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="content-container">
+
+            <!-- Profile Header -->
+            <section id="profile" class="profile-header-container">
+                <div class="banner">
+                    <div class="header-avatar-circle">L
+                        <div class="edit-camera-btn">
+                            <span style="color: white; font-size: 10px;">📷</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-info-row">
+                    <div class="header-name" id="header-name-display">Learner One</div>
+                    <button class="edit-profile-btn" onclick="openEditModal()">Edit Profile</button>
+                </div>
+            </section>
+
+            <!-- Personal Information -->
+            <section id="personal">
+                <h3 class="section-title">Personal Information</h3>
+                <p class="section-subtitle">Update your name and contact details</p>
+                <form id="personal-form" onsubmit="event.preventDefault(); saveProfile();">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="field-label">Full Name</label>
+                            <input type="text" class="input-field" id="full-name-input" value="Learner One">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Display Name</label>
+                            <input type="text" class="input-field" id="display-name-input" value="Learner">
+                        </div>
+                        <div class="form-group full">
+                            <label class="field-label">Email Address</label>
+                            <div class="email-field-wrapper">
+                                <input type="email" class="input-field" id="email-input" value="learner.one@example.com" style="flex:1">
+                                <span class="verified-badge">Verified ✓</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Date of Birth</label>
+                            <input type="date" class="input-field" id="dob-input" value="1995-01-01">
+                        </div>
+                        <div class="form-group full">
+                            <label class="field-label">Bio / About</label>
+                            <textarea class="input-field" id="bio-input" rows="3">Passionate about learning new things every day! Currently mastering biology and spanish.</textarea>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">Save Changes</button>
+                        <button type="button" class="btn-cancel" onclick="resetForm()">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- My Learning Stats -->
+            <section id="stats">
+                <h3 class="section-title">My Learning Stats</h3>
+                <p class="section-subtitle">Your flashcard journey so far</p>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-big-num orange">124</div>
+                        <div class="stat-label">Total Cards Created</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-big-num">8</div>
+                        <div class="stat-label">Subjects</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-big-num orange">12 <span class="stat-unit">days</span></div>
+                        <div class="stat-label">Study Streak</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-big-num">42</div>
+                        <div class="stat-label">Cards Mastered</div>
+                    </div>
+                </div>
+                <div class="mastery-row">
+                    <span class="header-name" style="font-size: 16px;">Overall Mastery</span>
+                    <span style="color: var(--orange); font-weight: 700;">65%</span>
+                </div>
+                <div class="mastery-progress-bar">
+                    <div class="mastery-fill" style="width: 65%;"></div>
+                </div>
+            </section>
+
+            <!-- Achievements -->
+            <section id="achievements">
+                <h3 class="section-title">Achievements</h3>
+                <p class="section-subtitle">Badges you've unlocked</p>
+                <div class="badge-grid" id="achievement-list">
+                    <!-- Badges injected by JS -->
+                </div>
+            </section>
+
+            <!-- Danger Zone -->
+            <section id="danger">
+                <h3 class="section-title danger-section-title">Danger Zone</h3>
+                <p class="section-subtitle">These actions are irreversible</p>
+                <div class="danger-card">
+                    <button class="danger-btn-outline" onclick="openConfirmModal('cards')">
+                        <span>⚠️</span> Delete All Flashcards
+                    </button>
+                    <button class="danger-btn-outline" onclick="openConfirmModal('progress')">
+                        <span>⚠️</span> Reset All Progress
+                    </button>
+                    <button class="danger-btn-solid" onclick="openConfirmModal('account')">
+                        <span>⚠️</span> Delete Account
+                    </button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="confirm-modal-overlay">
+        <div class="modal">
+            <span class="modal-icon-big">⚠️</span>
+            <h4 class="modal-title" id="confirm-modal-title">Are you sure?</h4>
+            <p class="modal-desc" id="confirm-modal-desc">This action cannot be undone and will permanently remove your data.</p>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" onclick="closeModals()">Cancel</button>
+                <button class="btn-modal-red" id="confirm-action-btn">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT PROFILE MODAL -->
+    <div class="modal-overlay" id="edit-modal-overlay">
+        <div class="modal large">
+            <div class="modal-header">
+                <h4 class="modal-title">Edit Profile</h4>
+                <button class="modal-close" onclick="closeModals()">×</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label class="field-label">Full Name</label>
+                    <input type="text" class="input-field" id="modal-full-name" value="Learner One">
+                </div>
+                <!-- Reuse fields for simplicity in demo -->
+            </div>
+            <p class="modal-desc" style="margin-top:20px">Complete the rest of your details in the main form for full updates.</p>
+            <div class="modal-footer">
+                <button class="btn-save" style="width:100%" onclick="saveProfileFromModal()">Save</button>
+                <button class="btn-modal-cancel" onclick="closeModals()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toast-icon">✓</span>
+        <span id="toast-msg">Changes saved successfully</span>
+    </div>
+
+    <script>
+        const achievements = [
+            { id: 1, icon: "🌱", name: "First Card", desc: "Created your first flashcard", unlocked: true },
+            { id: 2, icon: "🔥", name: "On Fire", desc: "7-day study streak", unlocked: true },
+            { id: 3, icon: "💯", name: "Century", desc: "Created 100 cards", unlocked: true },
+            { id: 4, icon: "🧠", name: "Scholar", desc: "Mastered 50 cards", unlocked: true },
+            { id: 5, icon: "📚", name: "Bookworm", desc: "Created 5 subjects", unlocked: true },
+            { id: 6, icon: "⚡", name: "Speed Learner", desc: "Studied 20 cards in one session", unlocked: false },
+            { id: 7, icon: "🏆", name: "Champion", desc: "30-day study streak", unlocked: false },
+            { id: 8, icon: "🎯", name: "Perfectionist", desc: "100% on a study session", unlocked: true }
+        ];
+
+        function init() {
+            renderAchievements();
+            loadProfile();
+            setupScrollSpy();
+        }
+
+        function renderAchievements() {
+            const list = document.getElementById('achievement-list');
+            list.innerHTML = achievements.map(a => `
+                <div class="badge-card ${a.unlocked ? 'unlocked' : 'locked'}">
+                    <span class="badge-emoji">${a.icon}</span>
+                    <div class="badge-name">${a.name}</div>
+                    <div class="badge-desc">${a.desc}</div>
+                    ${!a.unlocked ? '<div class="badge-lock">🔒</div>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function loadProfile() {
+            const saved = localStorage.getItem('flashcards_user_profile');
+            if (saved) {
+                const p = JSON.parse(saved);
+                document.getElementById('full-name-input').value = p.fullName;
+                document.getElementById('display-name-input').value = p.displayName;
+                document.getElementById('email-input').value = p.email;
+                document.getElementById('dob-input').value = p.dob;
+                document.getElementById('bio-input').value = p.bio;
+                updateDisplay(p);
+            }
+        }
+
+        function updateDisplay(p) {
+            document.getElementById('header-name-display').innerText = p.fullName;
+            document.getElementById('sidebar-name-display').innerText = p.fullName;
+            document.getElementById('sidebar-email-display').innerText = p.email;
+            const initials = p.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            document.querySelectorAll('.sidebar-avatar-large, .nav-avatar, .header-avatar-circle').forEach(el => {
+                if(!el.classList.contains('header-avatar-circle')) el.innerText = initials;
+                else {
+                    const existingInitials = el.childNodes[0];
+                    if(existingInitials.nodeType === 3) existingInitials.nodeValue = initials;
+                    else el.prepend(initials);
+                }
+            });
+        }
+
+        function saveProfile() {
+            const profile = {
+                fullName: document.getElementById('full-name-input').value,
+                displayName: document.getElementById('display-name-input').value,
+                email: document.getElementById('email-input').value,
+                dob: document.getElementById('dob-input').value,
+                bio: document.getElementById('bio-input').value
+            };
+            localStorage.setItem('flashcards_user_profile', JSON.stringify(profile));
+            updateDisplay(profile);
+            showToast('✓ Changes saved successfully');
+        }
+
+        function saveProfileFromModal() {
+            const name = document.getElementById('modal-full-name').value;
+            document.getElementById('full-name-input').value = name;
+            saveProfile();
+            closeModals();
+        }
+
+        function resetForm() {
+            loadProfile();
+            showToast('Form reset to last saved state');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // MODALS
+        function openEditModal() {
+            document.getElementById('edit-modal-overlay').style.display = 'flex';
+            document.getElementById('modal-full-name').value = document.getElementById('full-name-input').value;
+        }
+
+        function openConfirmModal(type) {
+            const overlay = document.getElementById('confirm-modal-overlay');
+            const title = document.getElementById('confirm-modal-title');
+            const desc = document.getElementById('confirm-modal-desc');
+            const btn = document.getElementById('confirm-action-btn');
+            
+            overlay.style.display = 'flex';
+            
+            if (type === 'cards') {
+                title.innerText = 'Delete All Flashcards?';
+                desc.innerText = 'This will permanently remove all your flashcards. This action cannot be undone.';
+                btn.onclick = () => handleDeleteConfirm('cards');
+            } else if (type === 'progress') {
+                title.innerText = 'Reset All Progress?';
+                desc.innerText = 'This will reset your study stats, streaks, and mastery levels but keep your cards.';
+                btn.onclick = () => handleDeleteConfirm('progress');
+            } else if (type === 'account') {
+                title.innerText = 'Delete Account?';
+                desc.innerText = 'Your entire account and all associated data will be deleted forever.';
+                btn.onclick = () => handleDeleteConfirm('account');
+            } else if (type === 'logout') {
+                title.innerText = 'Log Out?';
+                desc.innerText = 'Are you sure you want to log out of your session?';
+                btn.innerText = 'Logout';
+                btn.onclick = () => handleDeleteConfirm('logout');
+            }
+        }
+
+        function handleDeleteConfirm(type) {
+            showToast(`Action confirmed: ${type}`);
+            closeModals();
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        // Scroll Spy
+        function setupScrollSpy() {
+            const sections = document.querySelectorAll('section[id]');
+            const sidebarLinks = document.querySelectorAll('.sidebar-link[data-id]');
+
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 120) {
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                sidebarLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('data-id') === current) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

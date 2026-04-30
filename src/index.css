@@ -1,50 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
-  --bg-main: #ffffff;
-  --bg-secondary: #f4f4f5;
-  --bg-card: #ffffff;
-  --text-main: #000000;
-  --text-secondary: #52525b;
-  --border-main: #e4e4e7;
-  --border-card: rgba(55, 53, 47, 0.08);
-  --accent: #ff6b00;
-  --accent-foreground: #ffffff;
-  --mastery-easy-bg: #f0fdf4;
-  --mastery-easy-text: #166534;
-  --mastery-easy-border: #dcfce7;
-  --mastery-moderate-bg: #fff7ed;
-  --mastery-moderate-text: #9a3412;
-  --mastery-moderate-border: #ffedd5;
-  --mastery-hard-bg: #fef2f2;
-  --mastery-hard-text: #991b1b;
-  --mastery-hard-border: #fee2e2;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --bg-main: #FFFFFF;
+  --bg-secondary: #F3F4F6;
+  --bg-card: #FFFFFF;
+  --text-main: #111111;
+  --text-secondary: #6B7280;
+  --border-main: #E5E7EB;
+  --accent: #F97316;
+  --accent-foreground: #FFFFFF;
+  
+  /* Mastery levels with the new palette context */
+  --mastery-new-bg: #F3F4F6;
+  --mastery-new-text: #6B7280;
+  --mastery-hard-bg: #FEE2E2;
+  --mastery-hard-text: #EF4444;
+  --mastery-moderate-bg: #FFEDD5;
+  --mastery-moderate-text: #F97316;
+  --mastery-easy-bg: #DCFCE7;
+  --mastery-easy-text: #16A34A;
+
+  --shadow-subtle: 0 2px 16px rgba(0, 0, 0, 0.07);
 }
 
 .dark {
-  --bg-main: #000000;
-  --bg-secondary: #18181b;
-  --bg-card: #09090b;
-  --text-main: #ffffff;
-  --text-secondary: #a1a1aa;
-  --border-main: #27272a;
-  --border-card: rgba(255, 255, 255, 0.08);
-  --accent: #ffffff;
-  --accent-foreground: #000000;
-  --mastery-easy-bg: rgba(22, 101, 52, 0.2);
-  --mastery-easy-text: #4ade80;
-  --mastery-easy-border: rgba(74, 222, 128, 0.2);
-  --mastery-moderate-bg: rgba(154, 52, 18, 0.2);
-  --mastery-moderate-text: #fb923c;
-  --mastery-moderate-border: rgba(251, 146, 60, 0.2);
-  --mastery-hard-bg: rgba(153, 27, 27, 0.2);
-  --mastery-hard-text: #f87171;
-  --mastery-hard-border: rgba(248, 113, 113, 0.2);
+  --bg-main: #111111;
+  --bg-secondary: #1F2937;
+  --bg-card: #111111;
+  --text-main: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --border-main: #374151;
+  --accent: #F97316;
 }
 
 @theme {
+  --font-sans: var(--font-sans);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-bg-main: var(--bg-main);
@@ -53,125 +45,89 @@
   --color-text-main: var(--text-main);
   --color-text-secondary: var(--text-secondary);
   --color-border-main: var(--border-main);
-  --color-border-card: var(--border-card);
-  --color-mastery-easy-bg: var(--mastery-easy-bg);
-  --color-mastery-easy-text: var(--mastery-easy-text);
-  --color-mastery-easy-border: var(--mastery-easy-border);
-  --color-mastery-moderate-bg: var(--mastery-moderate-bg);
-  --color-mastery-moderate-text: var(--mastery-moderate-text);
-  --color-mastery-moderate-border: var(--mastery-moderate-border);
-  --color-mastery-hard-bg: var(--mastery-hard-bg);
-  --color-mastery-hard-text: var(--mastery-hard-text);
-  --color-mastery-hard-border: var(--mastery-hard-border);
+  --shadow-subtle: var(--shadow-subtle);
 }
 
-html {
-  transition: background-color 0.3s ease;
-}
-
-body {
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Notion-inspired utility classes */
-.notion-border {
-  border: 1px solid var(--border-main);
+@layer base {
+  body {
+    @apply bg-bg-main text-text-main selection:bg-accent/20;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
 .notion-card {
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  background-color: var(--bg-card);
-  transition: all 0.2s ease;
-}
-
-.notion-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-}
-
-.dark .notion-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-main);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  @apply bg-bg-card border border-border-main rounded-[16px] shadow-subtle hover:shadow-md transition-all duration-300;
 }
 
 .notion-pill {
-  border: 1px solid var(--border-main);
-  border-radius: 4px;
-  padding: 4px 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  background-color: var(--bg-card);
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-main);
-}
-
-button.notion-pill, 
-.notion-pill[role="button"] {
-  cursor: pointer;
+  @apply px-4 py-2 rounded-xl border border-border-main text-sm font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2;
 }
 
 .notion-pill:hover:not(:disabled):not(.active) {
-  background-color: var(--border-light);
+  @apply bg-bg-secondary border-accent/30 text-accent;
 }
 
 .notion-pill.active {
-  background-color: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-foreground);
+  @apply bg-accent border-accent text-white shadow-lg shadow-accent/20;
 }
 
 .notion-input {
-  border: 1px solid var(--border-main);
-  border-radius: 4px;
-  padding: 4px 8px;
-  background-color: var(--bg-secondary);
-  font-size: 0.875rem;
-  outline: none;
-  color: var(--text-main);
+  @apply bg-white border border-border-main rounded-xl px-4 py-3 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all text-text-main placeholder:text-text-secondary/50;
 }
 
-.notion-input:focus {
-  border-color: var(--accent);
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-border-main rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-text-secondary/30;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* Custom classes for the flip card effect */
-.perspective-1000 { perspective: 1000px; }
-.preserve-3d { transform-style: preserve-3d; }
-.backface-hidden { backface-visibility: hidden; }
-.rotate-y-180 { transform: rotateY(180deg); }
+/* 3D Flashcard Animation */
+@utility perspective-1000 { perspective: 1000px; }
+@utility preserve-3d { transform-style: preserve-3d; }
+@utility backface-hidden { backface-visibility: hidden; }
+@utility rotate-y-180 { transform: rotateY(180deg); }
+
+.flashcard-inner {
+  @apply relative w-full h-full preserve-3d transition-transform duration-500;
+}
+
+.flashcard-front, .flashcard-back {
+  @apply absolute inset-0 backface-hidden rounded-[16px] border border-border-main bg-white shadow-sm flex flex-col justify-center items-center p-8;
+}
+
+.flashcard-back {
+  @apply bg-accent/5;
+  transform: rotateY(180deg);
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
+
+/* Toast animations */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
 

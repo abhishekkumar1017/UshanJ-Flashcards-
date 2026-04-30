@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, LocalSubject, LocalDeck, LocalFlashcard, LocalProfile, SyncStatus } from '../db';
+import { db, LocalSubject, LocalDeck, LocalFlashcard, LocalProfile } from '../db';
 import { supabase } from '../supabase';
 import { User } from '@supabase/supabase-js';
-
-export type MasteryLevel = 'New' | 'Learning' | 'Review' | 'Mastered';
+import { MasteryLevel } from '../types';
 
 export function useStudyTracker(user: User | null) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+
+  const userId = user?.id || 'guest-user';
+  const isGuest = !user || userId === 'guest-user';
 
   // --- Live Queries ---
   const subjects = useLiveQuery(
@@ -27,14 +29,14 @@ export function useStudyTracker(user: User | null) {
   ) || [];
 
   const profile = useLiveQuery(
-    () => user ? db.profiles.get(user.id) : undefined,
-    [user]
+    () => db.profiles.get(userId),
+    [userId]
   );
 
   // --- Sync Logic ---
 
   const pushChanges = useCallback(async () => {
-    if (!user) return;
+    if (isGuest) return;
     setIsSyncing(true);
     try {
       // 1. Push Subjects
@@ -92,7 +94,7 @@ export function useStudyTracker(user: User | null) {
   }, [user]);
 
   const pullChanges = useCallback(async () => {
-    if (!user) return;
+    if (isGuest) return;
     setIsSyncing(true);
     try {
       // Pull all data for user
@@ -102,10 +104,10 @@ export function useStudyTracker(user: User | null) {
         { data: remoteCards },
         { data: remoteProfile }
       ] = await Promise.all([
-        supabase.from('subjects').select('*').eq('user_id', user.id),
-        supabase.from('decks').select('*').eq('user_id', user.id),
-        supabase.from('flashcards').select('*').eq('user_id', user.id),
-        supabase.from('profiles').select('*').eq('id', user.id).single()
+        supabase.from('subjects').select('*').eq('user_id', userId),
+        supabase.from('decks').select('*').eq('user_id', userId),
+        supabase.from('flashcards').select('*').eq('user_id', userId),
+        supabase.from('profiles').select('*').eq('id', userId).single()
       ]);
 
       // Update local DB (only if not pending local changes)
@@ -153,7 +155,7 @@ export function useStudyTracker(user: User | null) {
 
   // Initial pull and periodic sync
   useEffect(() => {
-    if (user) {
+    if (!isGuest) {
       pullChanges();
       const interval = setInterval(() => {
         pushChanges();
@@ -161,7 +163,7 @@ export function useStudyTracker(user: User | null) {
       }, 30000); // Every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [user, pullChanges, pushChanges]);
+  }, [isGuest, pullChanges, pushChanges]);
 
   // Listen for online status
   useEffect(() => {
@@ -173,39 +175,42 @@ export function useStudyTracker(user: User | null) {
   // --- Actions ---
 
   const addSubject = async (name: string) => {
-    if (!user) return;
     const id = crypto.randomUUID();
     const newSubject: LocalSubject = {
       id,
       name,
       created_at: new Date().toISOString(),
-      user_id: user.id,
-      sync_status: 'pending_create'
+      user_id: userId,
+      sync_status: isGuest ? 'synced' : 'pending_create'
     };
     await db.subjects.add(newSubject);
-    pushChanges();
+    if (!isGuest) pushChanges();
+    return newSubject;
   };
 
   const updateSubject = async (id: string, name: string) => {
-    await db.subjects.update(id, { name, sync_status: 'pending_update' });
-    pushChanges();
+    await db.subjects.update(id, { name, sync_status: isGuest ? 'synced' : 'pending_update' });
+    if (!isGuest) pushChanges();
   };
 
   const deleteSubject = async (id: string) => {
-    await db.subjects.update(id, { sync_status: 'pending_delete' });
-    pushChanges();
+    if (isGuest) {
+      await db.subjects.delete(id);
+    } else {
+      await db.subjects.update(id, { sync_status: 'pending_delete' });
+      pushChanges();
+    }
   };
 
   const addDeck = async (name: string, subject_id: string) => {
-    if (!user) return;
     const id = crypto.randomUUID();
     const newDeck: LocalDeck = {
       id,
       name,
       subject_id,
       created_at: new Date().toISOString(),
-      user_id: user.id,
-      sync_status: 'pending_create'
+      user_id: userId,
+      sync_status: isGuest ? 'synced' : 'pending_create'
     };
     await db.decks.add(newDeck);
 
@@ -229,26 +234,30 @@ Check out our YouTube channel for more tips and guidance!`,
       tags: ["demo", "welcome"],
       mastery_level: 'New',
       created_at: new Date().toISOString(),
-      user_id: user.id,
-      sync_status: 'pending_create'
+      user_id: userId,
+      sync_status: isGuest ? 'synced' : 'pending_create'
     };
     await db.flashcards.add(demoCard);
 
-    pushChanges();
+    if (!isGuest) pushChanges();
+    return newDeck;
   };
 
   const updateDeck = async (id: string, name: string) => {
-    await db.decks.update(id, { name, sync_status: 'pending_update' });
-    pushChanges();
+    await db.decks.update(id, { name, sync_status: isGuest ? 'synced' : 'pending_update' });
+    if (!isGuest) pushChanges();
   };
 
   const deleteDeck = async (id: string) => {
-    await db.decks.update(id, { sync_status: 'pending_delete' });
-    pushChanges();
+    if (isGuest) {
+      await db.decks.delete(id);
+    } else {
+      await db.decks.update(id, { sync_status: 'pending_delete' });
+      pushChanges();
+    }
   };
 
   const addFlashcard = async (front: string, back: string, deck_id: string, subject_id: string, tags: string[], mastery_level: MasteryLevel = 'New') => {
-    if (!user) return;
     const id = crypto.randomUUID();
     const newCard: LocalFlashcard = {
       id,
@@ -259,27 +268,42 @@ Check out our YouTube channel for more tips and guidance!`,
       tags,
       mastery_level,
       created_at: new Date().toISOString(),
-      user_id: user.id,
-      sync_status: 'pending_create'
+      user_id: userId,
+      sync_status: isGuest ? 'synced' : 'pending_create'
     };
     await db.flashcards.add(newCard);
-    pushChanges();
+    if (!isGuest) pushChanges();
+    return newCard;
   };
 
   const updateFlashcard = async (id: string, updates: Partial<LocalFlashcard>) => {
-    await db.flashcards.update(id, { ...updates, sync_status: 'pending_update' });
-    pushChanges();
+    await db.flashcards.update(id, { ...updates, sync_status: isGuest ? 'synced' : 'pending_update' });
+    if (!isGuest) pushChanges();
   };
 
   const deleteFlashcard = async (id: string) => {
-    await db.flashcards.update(id, { sync_status: 'pending_delete' });
-    pushChanges();
+    if (isGuest) {
+      await db.flashcards.delete(id);
+    } else {
+      await db.flashcards.update(id, { sync_status: 'pending_delete' });
+      pushChanges();
+    }
   };
 
   const updateProfile = async (updates: Partial<LocalProfile>) => {
-    if (!user) return;
-    await db.profiles.update(user.id, { ...updates, sync_status: 'pending_update' });
-    pushChanges();
+    const current = await db.profiles.get(userId);
+    if (!current) {
+      await db.profiles.add({
+        id: userId,
+        username: updates.username || null,
+        full_name: updates.full_name || null,
+        created_at: new Date().toISOString(),
+        sync_status: isGuest ? 'synced' : 'pending_update'
+      });
+    } else {
+      await db.profiles.update(userId, { ...updates, sync_status: isGuest ? 'synced' : 'pending_update' });
+    }
+    if (!isGuest) pushChanges();
   };
 
   return {

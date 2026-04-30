@@ -1,6 +1,5 @@
 import Dexie, { Table } from 'dexie';
-
-export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pending_delete';
+import { MasteryLevel, SyncStatus } from './types';
 
 export interface LocalSubject {
   id: string;
@@ -26,7 +25,7 @@ export interface LocalFlashcard {
   deck_id: string;
   subject_id: string;
   tags: string[];
-  mastery_level: string;
+  mastery_level: MasteryLevel;
   last_reviewed?: string;
   next_review_date?: string;
   created_at: string;

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - FlashCards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --white: #FFFFFF;
+            --orange: #F97316;
+            --black: #111111;
+            --light-grey: #F3F4F6;
+            --mid-grey: #6B7280;
+            --border-grey: #E5E7EB;
+            --red: #EF4444;
+            --green: #22C55E;
+            --blue: #3B82F6;
+            --purple: #A855F7;
+            --pink: #EC4899;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            transition: background 0.2s, color 0.1s, border-color 0.2s;
+        }
+
+        body {
+            background-color: var(--white);
+            color: var(--black);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        body.dark-theme {
+            --white: #111111;
+            --black: #FFFFFF;
+            --light-grey: #1F2937;
+            --mid-grey: #9CA3AF;
+            --border-grey: #374151;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed; top: 0; left: 0; right: 0; height: 70px;
+            background: var(--white);
+            border-top: 3px solid var(--orange);
+            border-bottom: 1px solid var(--border-grey);
+            display: flex; align-items: center; padding: 0 40px; z-index: 1000;
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: 40px; }
+        .logo-icon { color: var(--orange); font-size: 24px; }
+        .logo-text { font-weight: 700; font-size: 20px; color: var(--black); }
+        .logo-text span { color: var(--orange); }
+
+        .nav-tabs { display: flex; gap: 5px; flex: 1; }
+        .nav-tab {
+            text-decoration: none; color: var(--mid-grey); font-size: 14px; font-weight: 500;
+            padding: 10px 15px; border-radius: 8px;
+        }
+        .nav-tab:hover { color: var(--black); background: var(--light-grey); }
+        .nav-tab.active { color: var(--orange); background: rgba(249, 115, 22, 0.08); font-weight: 600; }
+
+        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .create-btn {
+            background: var(--orange); color: white; border: none;
+            padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        .nav-avatar {
+            width: 40px; height: 40px; border-radius: 50%; background: var(--orange);
+            display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed; top: 70px; left: 0; bottom: 0; width: 260px;
+            background: var(--white); border-right: 1px solid var(--border-grey); padding: 40px 0;
+            display: flex; flex-direction: column; z-index: 900;
+        }
+
+        .sidebar-user { padding: 0 30px 40px; text-align: center; }
+        .sidebar-avatar {
+            width: 80px; height: 80px; border-radius: 50%; background: var(--orange);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 32px; font-weight: 700; margin: 0 auto 15px;
+        }
+        .sidebar-name { font-weight: 700; font-size: 18px; color: var(--black); }
+        .sidebar-email { font-size: 13px; color: var(--mid-grey); }
+
+        .sidebar-link {
+            display: flex; align-items: center; gap: 15px; padding: 15px 30px;
+            text-decoration: none; color: var(--mid-grey); font-size: 14px; font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        .sidebar-link:hover { background: var(--light-grey); color: var(--black); }
+        .sidebar-link.active { background: rgba(249, 115, 22, 0.05); color: var(--orange); border-left-color: var(--orange); font-weight: 600; }
+
+        /* MAIN CONTENT */
+        .main-content { margin-left: 260px; margin-top: 70px; padding: 40px; display: flex; justify-content: center; }
+        .content-container { width: 100%; max-width: 780px; }
+        
+        section { padding: 60px 0; border-bottom: 1px solid var(--border-grey); }
+        section:last-child { border-bottom: none; }
+        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .section-subtitle { font-size: 14px; color: var(--mid-grey); margin-bottom: 30px; }
+
+        /* APPEARANCE Options */
+        .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .theme-card {
+            background: var(--white); border: 2px solid var(--border-grey); border-radius: 16px;
+            padding: 16px; cursor: pointer; text-align: center; position: relative;
+        }
+        .theme-card.active { border-color: var(--orange); }
+        .theme-preview { height: 60px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--border-grey); }
+        .theme-card.active::after {
+            content: '✓'; position: absolute; top: 10px; right: 10px;
+            background: var(--orange); color: white; border-radius: 50%;
+            width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .accent-row { display: flex; gap: 12px; margin-bottom: 24px; }
+        .color-dot {
+            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;
+        }
+        .color-dot.active { outline: 3px solid rgba(0,0,0,0.1); }
+
+        .pill-group { display: flex; gap: 12px; }
+        .pill-btn {
+            padding: 10px 24px; border-radius: 20px; border: 1px solid var(--border-grey);
+            background: var(--white); color: var(--mid-grey); font-weight: 600; font-size: 13px; cursor: pointer;
+        }
+        .pill-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+
+        /* NOTIFICATIONS */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
+        .toggle-info { display: flex; gap: 15px; }
+        .toggle-label { font-size: 14px; font-weight: 600; }
+        .toggle-desc { font-size: 12px; color: var(--mid-grey); margin-top: 2px; }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-grey); transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--orange); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Inputs & Selects */
+        .input-group { margin-top: 15px; }
+        .label { font-size: 13px; font-weight: 500; color: var(--mid-grey); margin-bottom: 8px; display: block; }
+        .input-field {
+            width: 100%; background: var(--white); border: 1px solid var(--border-grey);
+            border-radius: 12px; padding: 12px 16px; font-size: 14px; outline: none;
+        }
+        .input-field:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
+
+        /* Slider */
+        .range-container { margin: 24px 0; }
+        .range-header { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
+        .range-val { color: var(--orange); font-weight: 700; }
+        .range-slider {
+            -webkit-appearance: none; width: 100%; height: 6px; background: var(--border-grey);
+            border-radius: 3px; outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--orange); cursor: pointer; border: 4px solid var(--white);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* ACTIONS */
+        .full-btn-outline {
+            width: 100%; padding: 14px; border: 1px solid var(--black); background: transparent;
+            border-radius: 12px; text-align: left; font-size: 14px; font-weight: 600; cursor: pointer;
+            margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .full-btn-outline:hover { background: var(--light-grey); }
+        .btn-label-sub { font-weight: 400; color: var(--mid-grey); font-size: 13px; }
+
+        .privacy-info { background: var(--light-grey); padding: 20px; border-radius: 12px; font-size: 13px; color: var(--mid-grey); line-height: 1.6; }
+
+        /* Security Device */
+        .device-box {
+            background: var(--white); border: 1px solid var(--border-grey); border-radius: 12px;
+            padding: 16px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .device-info { display: flex; gap: 12px; align-items: center; }
+        .tag-this { background: var(--light-grey); color: var(--mid-grey); font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 30px; right: 30px; background: var(--black); color: white;
+            padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 6000;
+            transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* Password Strength */
+        .meter { height: 4px; background: var(--border-grey); margin-top: 8px; border-radius: 2px; }
+        .meter-bar { height: 100%; transition: width 0.3s; border-radius: 2px; }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 0 20px; }
+            .nav-tabs { overflow-x: auto; padding-bottom: 5px; }
+            .sidebar { position: fixed; top: 70px; left: 0; width: 100%; height: 60px; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border-grey); padding: 0; }
+            .sidebar-user { display: none; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .sidebar-link { white-space: nowrap; border-left: none; border-bottom: 4px solid transparent; padding: 0 20px; height: 60px; display: flex; align-items: center; }
+            .sidebar-link.active { border-bottom-color: var(--orange); }
+            .main-content { margin-left: 0; margin-top: 130px; padding: 20px; }
+            .theme-grid { grid-template-columns: 1fr; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">🧠</div>
+            <span class="logo-text">Flash<span>Cards</span></span>
+        </a>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">Dashboard</a>
+            <a href="index.html" class="nav-tab">My Subjects</a>
+            <a href="index.html" class="nav-tab">Study Mode</a>
+            <a href="index.html" class="nav-tab">Progress</a>
+            <a href="account.html" class="nav-tab">Account</a>
+            <a href="settings.html" class="nav-tab active">Settings</a>
+        </div>
+        <div class="nav-right">
+            <button class="create-btn">Create Card</button>
+            <div class="nav-avatar">L</div>
+        </div>
+    </nav>
+
+    <aside class="sidebar">
+        <div class="sidebar-user">
+            <div class="sidebar-avatar">L</div>
+            <div class="sidebar-name">Learner One</div>
+            <div class="sidebar-email">learner.one@example.com</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="account.html#profile" class="sidebar-link">👤 Profile</a>
+            <a href="account.html#personal" class="sidebar-link">🔐 Security</a>
+            <a href="account.html#stats" class="sidebar-link">📊 My Stats</a>
+            <a href="account.html#achievements" class="sidebar-link">🏆 Achievements</a>
+            <a href="#appearance" class="sidebar-link active" data-id="appearance">⚙️ Preferences</a>
+            <a href="#notifications" class="sidebar-link" data-id="notifications">🔔 Notifications</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="content-container">
+
+            <!-- Appearance -->
+            <section id="appearance">
+                <h3 class="section-title">Appearance</h3>
+                <p class="section-subtitle">Customize how the app looks</p>
+
+                <span class="label">Theme</span>
+                <div class="theme-grid">
+                    <div class="theme-card active" onclick="setTheme('light', this)">
+                        <div class="theme-preview" style="background: white;"></div>
+                        <div style="font-size: 13px; font-weight: 600;">Light</div>
+                    </div>
+                    <div class="theme-card" onclick="setTheme('dark', this)">
+                        <div class="theme-preview" style="background: #111111;"></div>
+                        <div style="font-size: 13px; font-weight: 600;">Dark</div>
+                    </div>
+                    <div class="theme-card" onclick="setTheme('system', this)">
+                        <div class="theme-preview" style="background: linear-gradient(90deg, white 50%, #111111 50%);"></div>
+                        <div style="font-size: 13px; font-weight: 600;">System</div>
+                    </div>
+                </div>
+
+                <span class="label">Accent Color</span>
+                <div class="accent-row">
+                    <div class="color-dot active" style="background: #F97316;" onclick="setAccent('#F97316', this)">✓</div>
+                    <div class="color-dot" style="background: #3B82F6;" onclick="setAccent('#3B82F6', this)"></div>
+                    <div class="color-dot" style="background: #22C55E;" onclick="setAccent('#22C55E', this)"></div>
+                    <div class="color-dot" style="background: #A855F7;" onclick="setAccent('#A855F7', this)"></div>
+                    <div class="color-dot" style="background: #EC4899;" onclick="setAccent('#EC4899', this)"></div>
+                    <div class="color-dot" style="background: #EF4444;" onclick="setAccent('#EF4444', this)"></div>
+                </div>
+
+                <span class="label">Font Size</span>
+                <div class="pill-group">
+                    <button class="pill-btn" onclick="setFontSize('small', this)">Small</button>
+                    <button class="pill-btn active" onclick="setFontSize('medium', this)">Medium</button>
+                    <button class="pill-btn" onclick="setFontSize('large', this)">Large</button>
+                </div>
+            </section>
+
+            <!-- Notifications -->
+            <section id="notifications">
+                <h3 class="section-title">Notifications</h3>
+                <p class="section-subtitle">Control what alerts you receive</p>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span style="font-size: 20px;">🔔</span>
+                        <div>
+                            <div class="toggle-label">Daily Study Reminder</div>
+                            <div class="toggle-desc">Get reminded to study every day</div>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked onchange="toggleReminder(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="input-group" id="reminder-time-group">
+                    <span class="label">Reminder Time</span>
+                    <input type="time" class="input-field" value="09:00">
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span style="font-size: 20px;">📧</span>
+                        <div>
+                            <div class="toggle-label">Email Notifications</div>
+                            <div class="toggle-desc">Receive updates via email</div>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span style="font-size: 20px;">🏆</span>
+                        <div>
+                            <div class="toggle-label">Achievement Alerts</div>
+                            <div class="toggle-desc">Notify when you unlock a badge</div>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button class="create-btn" style="padding: 12px 30px; border-radius: 12px;" onclick="showToast('✓ Notification settings saved')">Save Notification Settings</button>
+                </div>
+            </section>
+
+            <!-- Study Preferences -->
+            <section id="study">
+                <h3 class="section-title">Study Preferences</h3>
+                <p class="section-subtitle">Customize your study experience</p>
+
+                <span class="label">Default Study Mode</span>
+                <div class="theme-grid">
+                    <div class="theme-card active">📋 Flashcard Flip</div>
+                    <div class="theme-card">✍️ Type the Answer</div>
+                    <div class="theme-card">🔀 Random Mix</div>
+                </div>
+
+                <div class="range-container">
+                    <div class="range-header">
+                        <span class="label" style="margin:0">Cards Per Session</span>
+                        <span class="range-val" id="session-val">20 cards per session</span>
+                    </div>
+                    <input type="range" min="5" max="50" value="20" class="range-slider" oninput="document.getElementById('session-val').innerText = this.value + ' cards per session'">
+                </div>
+
+                <div class="input-group" style="margin-bottom: 24px;">
+                    <span class="label">Flip Animation</span>
+                    <select class="input-field">
+                        <option>3D Flip</option>
+                        <option>Fade</option>
+                        <option>Slide</option>
+                    </select>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-label">Auto-advance after answer</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="number" class="input-field" value="2" style="width: 60px; padding: 6px; text-align: center;">
+                        <span class="label" style="margin:0">seconds</span>
+                        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-label">Shuffle Cards</div>
+                    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                
+                <div class="toggle-row">
+                    <div class="toggle-label">Show Answer Hints</div>
+                    <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+            </section>
+
+            <!-- Data & Privacy -->
+            <section id="privacy">
+                <h3 class="section-title">Data & Privacy</h3>
+                <p class="section-subtitle">Manage your data</p>
+
+                <button class="full-btn-outline" onclick="exportData()">
+                    <span>📥 Export All Flashcards <span class="btn-label-sub">— Download as JSON file</span></span>
+                    <span>→</span>
+                </button>
+                <button class="full-btn-outline" onclick="importData()">
+                    <span>📤 Import Flashcards <span class="btn-label-sub">— Upload a JSON file</span></span>
+                    <span>→</span>
+                </button>
+                <button class="full-btn-outline" style="border-color: var(--border-grey); color: var(--mid-grey);" onclick="showToast('Study history cleared')">
+                    <span>🗑️ Clear Study History <span class="btn-label-sub">— Remove all progress data</span></span>
+                    <span>→</span>
+                </button>
+
+                <div class="privacy-info">
+                    🔒 Your data is stored locally on your device using localStorage. No data is sent to any server.
+                </div>
+            </section>
+
+            <!-- Security -->
+            <section id="security">
+                <h3 class="section-title">Account Security</h3>
+                
+                <div class="input-group">
+                    <span class="label">Current Password</span>
+                    <input type="password" class="input-field" placeholder="••••••••">
+                </div>
+                <div class="input-group">
+                    <span class="label">New Password</span>
+                    <input type="password" class="input-field" placeholder="••••••••" oninput="checkStrength(this.value)">
+                    <div class="meter"><div class="meter-bar" id="pass-meter"></div></div>
+                </div>
+                <div class="input-group">
+                    <span class="label">Confirm New Password</span>
+                    <input type="password" class="input-field" placeholder="••••••••">
+                </div>
+                <button class="create-btn" style="margin-top: 20px; padding: 12px 30px; border-radius: 12px;" onclick="showToast('✓ Password updated')">Update Password</button>
+
+                <div style="margin-top: 50px;">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span style="font-size: 20px;">🔐</span>
+                            <div>
+                                <div class="toggle-label">Two-Factor Authentication</div>
+                                <div class="toggle-desc">Enable extra security for your account</div>
+                            </div>
+                        </div>
+                        <button class="pill-btn" style="color: var(--orange); border-color: var(--orange);" onclick="showToast('2FA settings opened')">Enable 2FA</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <span class="label">Active Sessions</span>
+                    <div class="device-box">
+                        <div class="device-info">
+                            <span style="font-size: 24px;">💻</span>
+                            <div>
+                                <div style="font-size: 14px; font-weight: 600;">Current Device — Chrome on macOS</div>
+                                <div style="font-size: 11px; color: var(--mid-grey);">Active now • <span class="tag-this">This device</span></div>
+                            </div>
+                        </div>
+                        <span style="color: var(--orange); font-size: 13px; font-weight: 600; cursor: pointer;">Sign Out</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Language -->
+            <section id="language">
+                <h3 class="section-title">Language & Region</h3>
+                
+                <div class="input-group">
+                    <span class="label">Language</span>
+                    <select class="input-field">
+                        <option>English (US)</option>
+                        <option>Spanish</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <span class="label">Timezone</span>
+                    <select class="input-field">
+                        <option>Auto-detect (GMT-5)</option>
+                    </select>
+                </div>
+                
+                <button class="create-btn" style="margin-top: 30px; padding: 12px 30px; border-radius: 12px;" onclick="showToast('✓ Region settings saved')">Save Region Settings</button>
+            </section>
+
+        </div>
+    </main>
+
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toast-msg">Changes saved successfully</span>
+    </div>
+
+    <script>
+        function setTheme(theme, el) {
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            if (theme === 'dark') document.body.classList.add('dark-theme');
+            else document.body.classList.remove('dark-theme');
+            showToast(`Theme set to ${theme}`);
+        }
+
+        function setAccent(color, el) {
+            document.querySelectorAll('.color-dot').forEach(d => { d.classList.remove('active'); d.innerText = ''; });
+            el.classList.add('active');
+            el.innerText = '✓';
+            document.documentElement.style.setProperty('--orange', color);
+            showToast('Accent color updated');
+        }
+
+        function setFontSize(size, el) {
+            document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            const sizes = { small: '13px', medium: '16px', large: '19px' };
+            document.body.style.fontSize = sizes[size];
+            showToast(`Font size set to ${size}`);
+        }
+
+        function toggleReminder(checked) {
+            document.getElementById('reminder-time-group').style.opacity = checked ? '1' : '0.4';
+            document.getElementById('reminder-time-group').style.pointerEvents = checked ? 'auto' : 'none';
+        }
+
+        function checkStrength(p) {
+            const bar = document.getElementById('pass-meter');
+            if (p.length === 0) bar.style.width = '0%';
+            else if (p.length < 6) { bar.style.width = '33%'; bar.style.background = 'var(--red)'; }
+            else if (p.length < 10) { bar.style.width = '66%'; bar.style.background = 'var(--orange)'; }
+            else { bar.style.width = '100%'; bar.style.background = 'var(--green)'; }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function exportData() {
+            const data = { cards: [], progress: {} };
+            const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'flashcards.json'; a.click();
+            showToast('✓ Data exported successfully');
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = e => { showToast('✓ Data imported successfully'); };
+            input.click();
+        }
+
+        // Scroll Spy
+        const sections = document.querySelectorAll('section[id]');
+        const sidebarLinks = document.querySelectorAll('.sidebar-link[data-id]');
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                if (pageYOffset >= section.offsetTop - 120) current = section.getAttribute('id');
+            });
+            sidebarLinks.forEach(link => {
+                link.classList.toggle('active', link.getAttribute('data-id') === current);
+            });
+        });
+
+    </script>
+</body>
+</html>
