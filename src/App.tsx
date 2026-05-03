@@ -29,6 +29,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 import { useStudyTracker } from './hooks/useStudyTracker';
+import { Auth } from './components/Auth';
+import { LandingPage } from './components/LandingPage';
 import { MasteryLevel, Subject, Deck, Flashcard, Profile } from './types';
 import { getGlobalStats, incrementMasteredCount, incrementSessionCount, GlobalStats } from './services/statsService';
 
@@ -48,8 +50,31 @@ const getMasteryDisplay = (level: MasteryLevel) => {
 
 export default function App() {
   console.log('App component is executing');
-  const [user, setUser] = useState<User | null>({ id: 'guest-user' } as any);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('logout') === 'true') {
+      supabase.auth.signOut().then(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   
   // Use the new study tracker hook
   const {
@@ -127,15 +152,6 @@ export default function App() {
       clearTimeout(longPressTimer.current);
     }
   };
-
-  // Auth form states
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
 
   // UI States
   const [darkMode, setDarkMode] = useState(() => {
@@ -366,7 +382,13 @@ export default function App() {
   };
 
   const startStudySession = (cards: Flashcard[]) => {
-    if (cards.length === 0) return;
+    if (cards.length === 0) {
+      setAlertModal({ 
+        title: "No Cards Found", 
+        message: "Add some flashcards to your collection before starting a study session!" 
+      });
+      return;
+    }
     setStudyCards([...cards]);
     setCurrentStudyIndex(0);
     setIsStudyModalOpen(true);
@@ -525,6 +547,39 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-main">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+          <Feather className="text-accent" size={48} />
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (showAuth) {
+      return (
+        <div className="relative min-h-screen bg-bg-main">
+          <button 
+            onClick={() => setShowAuth(false)} 
+            className="fixed top-4 left-4 sm:top-8 sm:left-8 z-[60] p-3 sm:p-4 bg-white border border-border-main text-text-main shadow-lg rounded-full hover:bg-accent hover:text-white transition-all flex items-center gap-2 group"
+          >
+            <ArrowLeft size={20} />
+            <span className="hidden sm:inline font-bold">Back</span>
+          </button>
+          <Auth initialMode={authMode} onSuccess={() => setAuthLoading(true)} />
+        </div>
+      );
+    }
+    return (
+      <LandingPage 
+        onSignup={() => { setAuthMode('signup'); setShowAuth(true); }} 
+        onLogin={() => { setAuthMode('login'); setShowAuth(true); }} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-bg-main transition-color duration-300">
       {/* Navigation */}
@@ -589,6 +644,14 @@ export default function App() {
               className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-lg shadow-accent/20 hover:scale-105 transition-all"
             >
               {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
+            </button>
+
+            <button 
+              onClick={() => supabase.auth.signOut()}
+              className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+              title="Logout"
+            >
+              <XCircle size={20} />
             </button>
           </div>
         </div>
@@ -1238,7 +1301,7 @@ export default function App() {
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white w-full max-w-md rounded-[2rem] p-10 shadow-2xl space-y-6"
+                className="bg-bg-card w-full max-w-md rounded-3xl p-10 shadow-2xl space-y-6"
                 onClick={e => e.stopPropagation()}
               >
                 <h3 className="text-2xl font-black text-text-main tracking-tight">
@@ -1281,7 +1344,7 @@ export default function App() {
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white w-full max-w-md rounded-[2rem] p-10 shadow-2xl space-y-6"
+                className="bg-bg-card w-full max-w-md rounded-3xl p-10 shadow-2xl space-y-6"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="space-y-1">
@@ -1400,9 +1463,9 @@ export default function App() {
         <footer className="mt-20 py-12 border-t border-border-main text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Brain size={18} className="text-accent" />
-            <span className="text-sm font-black tracking-tighter text-text-main">FlashCards</span>
+            <span className="text-sm font-black tracking-tighter text-text-main uppercase">ushanj flashcards</span>
           </div>
-          <p className="text-xs text-text-secondary font-medium">© 2024 FlashCards. All rights reserved.</p>
+          <p className="text-xs text-text-secondary font-medium">© 2026 ushanj flashcards. All rights reserved.</p>
         </footer>
       </div>
     );
@@ -1751,50 +1814,52 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           <X size={24} />
         </button>
 
-            <motion.div 
-              onClick={() => setIsFlipped(!isFlipped)}
-              animate={{ rotateY: isFlipped ? 180 : 0 }}
-              transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
-              className="relative w-full h-full preserve-3d cursor-pointer"
-            >
-              {/* Front */}
-              <div className="absolute inset-0 backface-hidden bg-white rounded-[2.5rem] border-2 border-border-main p-12 flex flex-col items-center justify-center text-center shadow-xl">
-                <div className={`absolute top-8 right-8 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${mastery.classes}`}>
-                  {mastery.label}
+        <div className="w-full h-[400px] sm:h-[500px] perspective-1000">
+          <motion.div 
+            onClick={() => setIsFlipped(!isFlipped)}
+            animate={{ rotateY: isFlipped ? 180 : 0 }}
+            transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
+            className="relative w-full h-full preserve-3d cursor-pointer"
+          >
+            {/* Front */}
+            <div className="absolute inset-0 backface-hidden bg-bg-card rounded-3xl border-2 border-border-main p-12 flex flex-col items-center justify-center text-center shadow-xl">
+              <div className={`absolute top-8 right-8 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${mastery.classes}`}>
+                {mastery.label}
+              </div>
+              
+              <div className="mb-10 shrink-0">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/10 px-5 py-2 rounded-full">Question</span>
+              </div>
+              <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-2xl sm:text-3xl font-black leading-tight text-text-main tracking-tight whitespace-pre-wrap">{card.front}</p>
+              </div>
+              <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white shadow-lg shadow-accent/20 animate-bounce">
+                  <RotateCcw size={20} />
                 </div>
-                
-                <div className="mb-10 shrink-0">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/10 px-5 py-2 rounded-full">Question</span>
-                </div>
-                <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                  <p className="text-3xl sm:text-4xl font-black leading-tight text-text-main tracking-tight">{card.front}</p>
-                </div>
-                <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white shadow-lg shadow-accent/20 animate-bounce">
-                    <RotateCcw size={20} />
-                  </div>
-                  <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest opacity-50">Click to reveal answer</p>
-                </div>
+                <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest opacity-50">Click to reveal answer</p>
+              </div>
+            </div>
+
+            {/* Back */}
+            <div className="absolute inset-0 backface-hidden rotate-y-180 bg-accent/5 rounded-3xl border-2 border-accent/20 p-12 flex flex-col items-center justify-center text-center shadow-xl">
+              <div className={`absolute top-8 right-8 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${mastery.classes}`}>
+                {mastery.label}
               </div>
 
-              {/* Back */}
-              <div className="absolute inset-0 backface-hidden rotate-y-180 bg-accent/5 rounded-[2.5rem] border-2 border-accent/20 p-12 flex flex-col items-center justify-center text-center shadow-xl">
-                <div className={`absolute top-8 right-8 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${mastery.classes}`}>
-                  {mastery.label}
-                </div>
-
-                <div className="mb-10 shrink-0">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-white px-5 py-2 rounded-full border border-accent/20">Answer</span>
-                </div>
-                <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                  <p className="text-xl sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
-                </div>
-                <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
-                  <p className="text-[10px] text-accent font-black uppercase tracking-widest">Mastered this card?</p>
-                  <div className="w-8 h-1 bg-accent/30 rounded-full" />
-                </div>
+              <div className="mb-10 shrink-0">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-bg-card px-5 py-2 rounded-full border border-accent/20">Answer</span>
               </div>
-            </motion.div>
+              <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
+              </div>
+              <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
+                <p className="text-[10px] text-accent font-black uppercase tracking-widest">Mastered this card?</p>
+                <div className="w-8 h-1 bg-accent/30 rounded-full" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
         <div className="flex flex-col gap-6">
           <div className="flex justify-center gap-4">
@@ -1996,7 +2061,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white border-2 border-red-100 p-12 rounded-[2.5rem] shadow-2xl flex flex-col items-center justify-center text-center space-y-8"
+                className="bg-bg-card border-2 border-red-100 p-12 rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center space-y-8"
               >
                 <div className="space-y-4">
                   <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
@@ -2034,7 +2099,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 </div>
               </motion.div>
             ) : isEditing ? (
-              <div className="bg-white border-2 border-accent/20 p-10 rounded-[2.5rem] shadow-2xl space-y-8">
+              <div className="bg-bg-card border-2 border-accent/20 p-10 rounded-3xl shadow-2xl space-y-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Question</label>
@@ -2068,12 +2133,12 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 className="relative w-full h-full preserve-3d cursor-pointer"
               >
                 {/* Front (Question) */}
-                <div className="absolute inset-0 backface-hidden bg-white border-2 border-border-main p-12 flex flex-col items-center justify-center text-center shadow-2xl rounded-[2.5rem]">
+                <div className="absolute inset-0 backface-hidden bg-bg-card border-2 border-border-main p-12 flex flex-col items-center justify-center text-center shadow-2xl rounded-3xl">
                   <div className="mb-10 shrink-0">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/10 px-5 py-2 rounded-full">Question</span>
                   </div>
-                  <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-3xl sm:text-5xl font-black tracking-tight leading-none text-text-main mx-auto">{card.front}</p>
+                  <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-text-main mx-auto whitespace-pre-wrap">{card.front}</p>
                   </div>
                   <div className="mt-12 flex flex-col items-center gap-4 shrink-0">
                     <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white shadow-lg shadow-accent/20 animate-bounce">
@@ -2084,12 +2149,12 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                 </div>
 
                 {/* Back (Answer) */}
-                <div className="absolute inset-0 backface-hidden rotate-y-180 bg-accent/5 border-2 border-accent/20 p-12 flex flex-col items-center justify-center text-center shadow-2xl rounded-[2.5rem]">
+                <div className="absolute inset-0 backface-hidden rotate-y-180 bg-accent/5 border-2 border-accent/20 p-12 flex flex-col items-center justify-center text-center shadow-2xl rounded-3xl">
                   <div className="mb-10 shrink-0">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-white px-5 py-2 rounded-full border border-accent/20">Answer</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-bg-card px-5 py-2 rounded-full border border-accent/20">Answer</span>
                   </div>
-                  <div className="w-full max-h-[300px] overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-xl sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
+                  <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
                   </div>
                   <div className="mt-12 flex flex-col items-center gap-4 shrink-0">
                     <p className="text-[10px] text-accent font-black uppercase tracking-widest opacity-50">Mastered?</p>
@@ -2270,10 +2335,10 @@ const CreateCardModal: React.FC<{
       <motion.div 
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-2xl rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden border border-border-main mx-auto"
+        className="bg-bg-card w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-border-main mx-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 sm:p-10 space-y-6 md:space-y-8">
+        <div className="p-6 sm:p-10 space-y-6 md:space-y-8 bg-bg-card">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-2xl font-black text-text-main tracking-tight">Create Card</h3>
@@ -2412,28 +2477,28 @@ const RecentFlashcard: React.FC<{
     exit={{ opacity: 0, scale: 0.95 }}
     whileHover={{ y: -4 }}
     onClick={onClick}
-    className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-sm hover:shadow-xl hover:border-[#F97316] group relative transition-all cursor-pointer flex flex-col justify-between h-48"
+    className="bg-bg-card border border-border-main rounded-2xl p-6 shadow-subtle hover:shadow-xl hover:border-accent group relative transition-all cursor-pointer flex flex-col justify-between h-48"
   >
     <div className="flex justify-between items-start mb-4">
-      <div className="w-8 h-8 bg-[#F97316] rounded-lg flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/20">
+      <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-white font-black text-lg shadow-lg shadow-accent/20">
         Q
       </div>
       {subjectName && (
-        <span className="px-3 py-1 bg-gray-100 text-[#6B7280] rounded-full text-[10px] font-bold uppercase tracking-wider">
+        <span className="px-3 py-1 bg-bg-secondary text-text-secondary rounded-full text-[10px] font-bold uppercase tracking-wider">
           {subjectName}
         </span>
       )}
     </div>
     
-    <p className="text-[#111111] font-semibold text-lg leading-snug line-clamp-2 grow mb-4">
+    <p className="text-text-main font-semibold text-lg leading-snug line-clamp-2 grow mb-4">
       {card.front}
     </p>
     
-    <div className="flex justify-between items-end border-t border-gray-50 pt-4 mt-auto">
-      <span className="text-xs font-medium text-[#6B7280] truncate max-w-[150px]">
+    <div className="flex justify-between items-end border-t border-border-main pt-4 mt-auto">
+      <span className="text-xs font-medium text-text-secondary truncate max-w-[150px]">
         {deckName || 'General Deck'}
       </span>
-      <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">
+      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
         {timeAgo(card.created_at)}
       </span>
     </div>
@@ -2505,7 +2570,7 @@ const DeckCard: React.FC<{
 const DashboardFlashcard: React.FC<{ card: Flashcard, onClick: () => void, onEdit: () => void, onDelete: () => void }> = ({ card, onClick, onEdit, onDelete }) => (
   <motion.div 
     whileHover={{ y: -4 }}
-    className="bg-white border border-border-main rounded-xl p-4 sm:p-6 shadow-subtle hover:shadow-xl hover:border-accent group relative transition-all cursor-pointer"
+    className="bg-bg-card border border-border-main rounded-xl p-4 sm:p-6 shadow-subtle hover:shadow-xl hover:border-accent group relative transition-all cursor-pointer"
     onClick={onClick}
   >
     <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
@@ -2521,8 +2586,8 @@ const DashboardFlashcard: React.FC<{ card: Flashcard, onClick: () => void, onEdi
         ))}
       </div>
       <div className="flex items-center gap-2 sm:gap-3 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 shrink-0">
-        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-text-secondary hover:text-accent p-1"><Edit3 size={12} className="sm:size-[14px]" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-text-secondary hover:text-red-500 p-1"><Trash2 size={12} className="sm:size-[14px]" /></button>
+        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-text-secondary hover:text-accent p-1 transition-colors"><Edit3 size={12} className="sm:size-[14px]" /></button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-text-secondary hover:text-red-500 p-1 transition-colors"><Trash2 size={12} className="sm:size-[14px]" /></button>
       </div>
     </div>
   </motion.div>
@@ -2532,7 +2597,7 @@ const DailyStatsWidget: React.FC<{ cards: Flashcard[] }> = ({ cards }) => {
   const masteredCount = cards.filter(c => c.mastery_level === 'Mastered').length;
   const progress = cards.length > 0 ? (masteredCount / cards.length) * 100 : 0;
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
+    <div className="bg-bg-card p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-black text-text-main tracking-tight">Daily Stats</h4>
         <div className="p-2 bg-bg-secondary rounded-xl"><Brain size={16} className="text-accent" /></div>
@@ -2568,25 +2633,25 @@ const QuickAddWidget: React.FC<{ subjects: Subject[], onSave: (f: string, b: str
   };
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
+    <div className="bg-bg-card p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
       <h4 className="text-lg font-black text-text-main tracking-tight">Quick Add Card</h4>
       <div className="space-y-4">
         <textarea 
           placeholder="Question..." 
           value={f}
           onChange={e => setF(e.target.value)}
-          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold border-2 border-transparent focus:bg-white focus:border-accent transition-all outline-none min-h-[100px]"
+          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold border-2 border-transparent focus:bg-bg-card focus:border-accent transition-all outline-none min-h-[100px]"
         />
         <textarea 
           placeholder="Answer..." 
           value={b}
           onChange={e => setB(e.target.value)}
-          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold border-2 border-transparent focus:bg-white focus:border-accent transition-all outline-none min-h-[100px]"
+          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold border-2 border-transparent focus:bg-bg-card focus:border-accent transition-all outline-none min-h-[100px]"
         />
         <select 
           value={sid}
           onChange={e => setSid(e.target.value)}
-          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold outline-none border-2 border-transparent focus:bg-white focus:border-accent transition-all"
+          className="w-full p-4 bg-bg-secondary rounded-xl text-sm font-bold outline-none border-2 border-transparent focus:bg-bg-card focus:border-accent transition-all"
         >
           <option value="">Select Subject</option>
           {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -2605,7 +2670,7 @@ const QuickAddWidget: React.FC<{ subjects: Subject[], onSave: (f: string, b: str
 const RecentActivityWidget: React.FC<{ cards: Flashcard[] }> = ({ cards }) => {
   const recent = [...cards].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
+    <div className="bg-bg-card p-8 rounded-[2.5rem] shadow-subtle border border-border-main space-y-6">
       <h4 className="text-lg font-black text-text-main tracking-tight">Recent Activity</h4>
       {recent.length === 0 ? (
         <p className="text-sm text-text-secondary italic font-medium">No activity yet</p>

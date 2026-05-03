@@ -37,6 +37,8 @@ export interface LocalProfile {
   id: string;
   username: string | null;
   full_name: string | null;
+  location?: string | null;
+  preparing_for_exam?: string | null;
   created_at: string;
   sync_status: SyncStatus;
 }

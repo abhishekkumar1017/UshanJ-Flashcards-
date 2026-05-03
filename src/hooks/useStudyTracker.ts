@@ -218,15 +218,15 @@ export function useStudyTracker(user: User | null) {
     const demoCardId = crypto.randomUUID();
     const demoCard: LocalFlashcard = {
       id: demoCardId,
-      front: "What is Ushanj?",
-      back: `UshanJ is your complete preparation partner — built for every student, for every competitive exam.
-Created by Abhishek Kumar, UshanJ was born from one simple belief: aspirants don’t just need more content — they need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.
-Today, UshanJ offers three powerful platforms to support your entire preparation journey:
-Ushanj.com is a full-featured web app with dedicated tracking tools for every major competitive exam. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.
-Ushanj Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.
-Ushanj Flashcards is a dedicated flashcard platform built specifically for competitive exam revision — helping you retain more in less time through active recall and spaced repetition.
-Whether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, UshanJ meets you where you are and gives you the tools to go further.
-Three platforms. Every exam. One preparation partner.
+      front: "What is Ushanj Flashcards?",
+      back: `Ushanj Flashcards is your complete preparation partner — built for every student, built for you.
+Created by Abhishek Kumar, Ushanj Flashcards was born from one simple belief: you don’t just need more content — you need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.
+Today, Ushanj Flashcards offers three powerful platforms to support your entire preparation journey:
+Ushanj Flashcards.com is a full-featured web app with dedicated tracking tools built for you. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.
+Ushanj Flashcards Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.
+Ushanj Flashcards is a dedicated flashcard platform built specifically for your learning — helping you retain more in less time through active recall and spaced repetition.
+Whether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, Ushanj Flashcards meets you where you are and gives you the tools to go further.
+Three platforms. One preparation partner. Built for you.
 
 Check out our YouTube channel for more tips and guidance!`,
       deck_id: id,

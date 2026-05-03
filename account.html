@@ -801,10 +801,18 @@
                             <label class="field-label">Display Name</label>
                             <input type="text" class="input-field" id="display-name-input" value="Learner">
                         </div>
+                        <div class="form-group">
+                            <label class="field-label">Location</label>
+                            <input type="text" class="input-field" id="location-input" placeholder="e.g. Delhi, India">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">Preparing for Exam</label>
+                            <input type="text" class="input-field" id="exam-input" placeholder="e.g. UPSC, NEET">
+                        </div>
                         <div class="form-group full">
                             <label class="field-label">Email Address</label>
                             <div class="email-field-wrapper">
-                                <input type="email" class="input-field" id="email-input" value="learner.one@example.com" style="flex:1">
+                                <input type="email" class="input-field" id="email-input" value="learner.one@example.com" style="flex:1" readonly>
                                 <span class="verified-badge">Verified ✓</span>
                             </div>
                         </div>
@@ -973,6 +981,8 @@
                 const p = JSON.parse(saved);
                 document.getElementById('full-name-input').value = p.full_name || p.fullName || '';
                 document.getElementById('display-name-input').value = p.display_name || p.displayName || '';
+                document.getElementById('location-input').value = p.location || '';
+                document.getElementById('exam-input').value = p.preparing_for_exam || '';
                 document.getElementById('email-input').value = p.email || '';
                 document.getElementById('dob-input').value = p.dob || '';
                 document.getElementById('bio-input').value = p.bio || '';
@@ -998,6 +1008,8 @@
                 ...oldProfile,
                 full_name: document.getElementById('full-name-input').value,
                 display_name: document.getElementById('display-name-input').value,
+                location: document.getElementById('location-input').value,
+                preparing_for_exam: document.getElementById('exam-input').value,
                 email: document.getElementById('email-input').value,
                 dob: document.getElementById('dob-input').value,
                 bio: document.getElementById('bio-input').value
@@ -1061,6 +1073,10 @@
         }
 
         function handleDeleteConfirm(type) {
+            if (type === 'logout') {
+                window.location.href = 'index.html?logout=true';
+                return;
+            }
             showToast(`Action confirmed: ${type}`);
             closeModals();
         }
