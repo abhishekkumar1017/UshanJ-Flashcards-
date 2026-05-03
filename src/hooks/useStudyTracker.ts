@@ -42,39 +42,72 @@ export function useStudyTracker(user: User | null) {
       // 1. Push Subjects
       const pendingSubjects = await db.subjects.where('sync_status').anyOf(['pending_create', 'pending_update', 'pending_delete']).toArray();
       for (const s of pendingSubjects) {
+        let success = false;
         if (s.sync_status === 'pending_delete') {
-          await supabase.from('subjects').delete().eq('id', s.id);
-          await db.subjects.delete(s.id);
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'subjects', action: 'delete', id: s.id, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.subjects.delete(s.id);
         } else {
           const { sync_status, ...data } = s;
-          const { error } = await supabase.from('subjects').upsert(data);
-          if (!error) await db.subjects.update(s.id, { sync_status: 'synced' });
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'subjects', action: 'upsert', data, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.subjects.update(s.id, { sync_status: 'synced' });
         }
       }
 
       // 2. Push Decks
       const pendingDecks = await db.decks.where('sync_status').anyOf(['pending_create', 'pending_update', 'pending_delete']).toArray();
       for (const d of pendingDecks) {
+        let success = false;
         if (d.sync_status === 'pending_delete') {
-          await supabase.from('decks').delete().eq('id', d.id);
-          await db.decks.delete(d.id);
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'decks', action: 'delete', id: d.id, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.decks.delete(d.id);
         } else {
           const { sync_status, ...data } = d;
-          const { error } = await supabase.from('decks').upsert(data);
-          if (!error) await db.decks.update(d.id, { sync_status: 'synced' });
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'decks', action: 'upsert', data, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.decks.update(d.id, { sync_status: 'synced' });
         }
       }
 
       // 3. Push Flashcards
       const pendingCards = await db.flashcards.where('sync_status').anyOf(['pending_create', 'pending_update', 'pending_delete']).toArray();
       for (const c of pendingCards) {
+        let success = false;
         if (c.sync_status === 'pending_delete') {
-          await supabase.from('flashcards').delete().eq('id', c.id);
-          await db.flashcards.delete(c.id);
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'flashcards', action: 'delete', id: c.id, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.flashcards.delete(c.id);
         } else {
           const { sync_status, ...data } = c;
-          const { error } = await supabase.from('flashcards').upsert(data);
-          if (!error) await db.flashcards.update(c.id, { sync_status: 'synced' });
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'flashcards', action: 'upsert', data, userId })
+          });
+          if (response.ok) success = true;
+          if (success) await db.flashcards.update(c.id, { sync_status: 'synced' });
         }
       }
 
@@ -82,8 +115,12 @@ export function useStudyTracker(user: User | null) {
       const pendingProfile = await db.profiles.where('sync_status').equals('pending_update').toArray();
       for (const p of pendingProfile) {
         const { sync_status, ...data } = p;
-        const { error } = await supabase.from('profiles').upsert(data);
-        if (!error) await db.profiles.update(p.id, { sync_status: 'synced' });
+        const response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table: 'profiles', action: 'upsert', data, userId })
+        });
+        if (response.ok) await db.profiles.update(p.id, { sync_status: 'synced' });
       }
 
     } catch (err) {
@@ -91,24 +128,29 @@ export function useStudyTracker(user: User | null) {
     } finally {
       setIsSyncing(false);
     }
-  }, [user]);
+  }, [user, userId, isGuest]);
 
   const pullChanges = useCallback(async () => {
     if (isGuest) return;
     setIsSyncing(true);
     try {
-      // Pull all data for user
+      // Pull all data for user via cached API
       const [
-        { data: remoteSubjects },
-        { data: remoteDecks },
-        { data: remoteCards },
-        { data: remoteProfile }
+        resSubjects,
+        resDecks,
+        resCards,
+        resProfile
       ] = await Promise.all([
-        supabase.from('subjects').select('*').eq('user_id', userId),
-        supabase.from('decks').select('*').eq('user_id', userId),
-        supabase.from('flashcards').select('*').eq('user_id', userId),
-        supabase.from('profiles').select('*').eq('id', userId).single()
+        fetch(`/api/subjects?userId=${userId}`).then(r => r.json()),
+        fetch(`/api/decks?userId=${userId}`).then(r => r.json()),
+        fetch(`/api/flashcards?userId=${userId}`).then(r => r.json()),
+        fetch(`/api/profile?userId=${userId}`).then(r => r.json())
       ]);
+
+      const remoteSubjects = resSubjects.data;
+      const remoteDecks = resDecks.data;
+      const remoteCards = resCards.data;
+      const remoteProfile = resProfile.data;
 
       // Update local DB (only if not pending local changes)
       if (remoteSubjects) {
