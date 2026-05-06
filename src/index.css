@@ -55,6 +55,13 @@
     @apply bg-bg-main text-text-main selection:bg-accent/20;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    overscroll-behavior-y: none;
+  }
+
+  input, textarea, p, h1, h2, h3, h4, span[contenteditable="true"] {
+    user-select: text;
   }
 }
 

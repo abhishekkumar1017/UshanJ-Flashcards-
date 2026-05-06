@@ -8,6 +8,7 @@ import { MasteryLevel } from '../types';
 export function useStudyTracker(user: User | null) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   const userId = user?.id || 'guest-user';
   const isGuest = !user || userId === 'guest-user';
@@ -209,9 +210,19 @@ export function useStudyTracker(user: User | null) {
 
   // Listen for online status
   useEffect(() => {
-    const handleOnline = () => pushChanges();
+    const handleOnline = () => {
+      setIsOnline(true);
+      pushChanges();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [pushChanges]);
 
   // --- Actions ---
@@ -358,6 +369,7 @@ Search UshanJ on youtube to get the youtube channel`,
     flashcards,
     profile,
     isSyncing,
+    isOnline,
     lastSyncTime,
     addSubject,
     updateSubject,

@@ -23,7 +23,8 @@ import {
   Sun,
   Moon,
   Youtube,
-  Feather
+  Feather,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './supabase';
@@ -83,6 +84,7 @@ export default function App() {
     flashcards: allFlashcards,
     profile: dbProfile,
     isSyncing,
+    isOnline,
     lastSyncTime,
     addSubject,
     updateSubject,
@@ -169,6 +171,20 @@ export default function App() {
   const [viewingDeck, setViewingDeck] = useState<Deck | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [globalStats, setGlobalStats] = useState<GlobalStats>({ mastered: 0, studySessions: 0 });
+
+  // Handle Online/Offline Toasts
+  useEffect(() => {
+    const wasOffline = localStorage.getItem('last_online_status') === 'false';
+    const currentStatus = isOnline ? 'true' : 'false';
+    
+    if (isOnline && wasOffline) {
+      addToast('Welcome back to online!');
+    } else if (!isOnline && !wasOffline && localStorage.getItem('last_online_status') !== null) {
+      addToast('You are back to offline mode.');
+    }
+    
+    localStorage.setItem('last_online_status', currentStatus);
+  }, [isOnline]);
 
   useEffect(() => {
     const fetchGlobalStats = async () => {
@@ -589,16 +605,16 @@ export default function App() {
     <div className="min-h-screen bg-bg-main transition-color duration-300">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border-main transition-colors">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('dashboard')}>
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => setActiveTab('dashboard')}>
             <Feather size={32} className="text-accent group-hover:rotate-12 transition-transform" />
-            <h1 className="text-xl sm:text-2xl font-black tracking-tighter">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tighter hidden xs:block">
               <span className="text-accent">ushanj</span> <span className="text-text-main">flashcards</span>
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-6">
-            <nav className="hidden md:flex items-center gap-1">
+          <div className="flex items-center gap-2 md:gap-6 ml-auto">
+            <nav className="hidden lg:flex items-center gap-1">
               {[
                 { id: 'dashboard', label: 'Dashboard' },
                 { id: 'subjects', label: 'Subjects' },
@@ -626,41 +642,39 @@ export default function App() {
               ))}
             </nav>
 
-            <div className="hidden sm:block h-6 w-px bg-border-main" />
+            <div className="hidden lg:block h-6 w-px bg-border-main" />
 
             <button 
               onClick={() => setIsAddingCard(true)}
-              className="hidden sm:block bg-accent text-white px-6 py-3 rounded-2xl text-sm font-black shadow-xl shadow-accent/20 hover:-translate-y-0.5 transition-all"
+              className="hidden md:block bg-accent text-white px-6 py-3 rounded-2xl text-sm font-black shadow-xl shadow-accent/20 hover:-translate-y-0.5 transition-all"
             >
               Create Card
             </button>
             
             <button 
               onClick={() => setIsAddingCard(true)}
-              className="sm:hidden p-3 bg-accent text-white rounded-xl shadow-lg shadow-accent/20"
+              className="md:hidden p-3 bg-accent text-white rounded-xl shadow-lg shadow-accent/20"
             >
               <PlusCircle size={20} />
             </button>
 
+            {!isOnline && (
+              <span className="hidden xs:flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">
+                <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                Offline
+              </span>
+            )}
             <button 
-              onClick={() => window.location.href = 'account.html'}
-              className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-lg shadow-accent/20 hover:scale-105 transition-all"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-black text-lg shadow-lg shadow-accent/20 hover:scale-105 transition-all shrink-0"
             >
               {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
-            </button>
-
-            <button 
-              onClick={() => supabase.auth.signOut()}
-              className="p-3 text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-              title="Logout"
-            >
-              <XCircle size={20} />
             </button>
           </div>
         </div>
         
         {/* Mobile Nav */}
-        <div className="md:hidden flex overflow-x-auto px-4 py-2 bg-white/50 border-t border-border-main scrollbar-hide">
+        <div className="lg:hidden flex overflow-x-auto px-4 py-2 bg-white/50 border-t border-border-main scrollbar-hide">
           <div className="flex gap-2 mx-auto">
             {[
               { id: 'dashboard', label: 'Dashboard' },
@@ -685,7 +699,7 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
+      <div className="max-w-screen-2xl mx-auto p-6 md:p-8 lg:p-12 space-y-12">
         {activeTab === 'dashboard' && (
           <>
             {/* Hero Section */}
@@ -694,26 +708,26 @@ export default function App() {
                 <span className="inline-block px-4 py-1.5 bg-white text-accent text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-sm">
                   Learning Portal
                 </span>
-                <h2 className="text-4xl sm:text-5xl font-black text-text-main leading-tight tracking-tight">
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-text-main leading-tight tracking-tight">
                   Hello, {profile?.full_name?.split(' ')[0] || 'Learner'}!
                 </h2>
                 <p className="text-text-secondary text-base md:text-lg font-medium">
                   You've mastered <span className="text-accent font-black">{(allFlashcards.filter(f => f.mastery_level === 'Mastered').length)}</span> cards out of {allFlashcards.length}.
                 </p>
-                <div className="flex justify-center md:justify-start gap-4 pt-2 md:pt-4">
+                <div className="flex justify-center md:justify-start gap-6 pt-2 md:pt-4">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Sessions</span>
-                    <span className="text-lg md:text-xl font-black text-accent">{globalStats.studySessions.toLocaleString()}</span>
+                    <span className="text-lg md:text-2xl font-black text-accent">{globalStats.studySessions.toLocaleString()}</span>
                   </div>
-                  <div className="w-px h-8 bg-border-main self-center" />
+                  <div className="w-px h-10 bg-border-main self-center" />
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Mastered</span>
-                    <span className="text-lg md:text-xl font-black text-accent">{globalStats.mastered.toLocaleString()}</span>
+                    <span className="text-lg md:text-2xl font-black text-accent">{globalStats.mastered.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 w-full space-y-6 md:space-y-8">
+              <div className="flex-1 w-full space-y-6 md:space-y-8 max-w-xl mx-auto md:mx-0">
                 <div className="grid grid-cols-3 gap-3 md:gap-4">
                   <StatCard label="Total" value={allFlashcards.length} isAccent />
                   <StatCard label="Subjects" value={allSubjects.length} />
@@ -733,7 +747,7 @@ export default function App() {
             </section>
 
             {/* Quick Actions Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <ActionButton 
                 icon={<PlusCircle className="text-accent" />} 
                 label="Create Card" 
@@ -758,23 +772,23 @@ export default function App() {
             </div>
 
             {/* 2-Column Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_350px] gap-8 xl:gap-12 items-start">
               
               {/* Left Column */}
-              <div className="space-y-16">
+              <div className="space-y-12 lg:space-y-16">
                 
                 {/* Subjects */}
-                <section className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-black text-text-main tracking-tight">Your Subjects</h3>
+                <section className="space-y-6 overflow-hidden">
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-text-main tracking-tight">Your Subjects</h3>
                     <button 
                       onClick={() => setIsAddingSubject(true)}
-                      className="text-xs font-black text-accent uppercase tracking-widest px-4 py-2 border-2 border-accent rounded-full hover:bg-accent hover:text-white transition-all"
+                      className="text-[10px] sm:text-xs font-black text-accent uppercase tracking-widest px-4 py-2 border-2 border-accent rounded-full hover:bg-accent hover:text-white transition-all"
                     >
                       Add Subject
                     </button>
                   </div>
-                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                  <div className="flex gap-4 overflow-x-auto pb-4 px-2 scrollbar-hide">
                     {subjects.map((subject, idx) => (
                       <SubjectChip 
                         key={subject.id}
@@ -794,9 +808,9 @@ export default function App() {
 
                 {/* Decks Grid */}
                 {selectedSubject && (
-                  <section className="space-y-6">
-                    <h3 className="text-xl font-black text-text-main">Decks in {selectedSubject.name}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <section className="space-y-6 px-2">
+                    <h3 className="text-lg sm:text-xl font-black text-text-main">Decks in {selectedSubject.name}</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6">
                       {decks.map(deck => (
                         <DeckCard 
                           key={deck.id}
@@ -950,7 +964,7 @@ export default function App() {
                     </div>
 
                     {sortedAndFilteredFlashcards.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-24 bg-bg-secondary/20 rounded-[2.5rem] border-2 border-dashed border-border-main">
+                      <div className="flex flex-col items-center justify-center py-24 bg-bg-secondary/20 rounded-[2.5rem] border-2 border-dashed border-border-main mx-2">
                         <div className="text-6xl mb-6">📚</div>
                         <p className="text-xl font-black text-text-secondary mb-8">No cards found in this deck</p>
                         <button 
@@ -962,8 +976,8 @@ export default function App() {
                       </div>
                     ) : (
                       <div className={viewMode === 'grid' 
-                        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" 
-                        : "space-y-4"
+                        ? "grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 px-2" 
+                        : "space-y-4 px-2"
                       }>
                         {sortedAndFilteredFlashcards.map(card => (
                           <DashboardFlashcard 
@@ -1485,13 +1499,30 @@ const ProfileModal: React.FC<{
 }> = ({ profile, onClose, onUpdate, darkMode, setDarkMode, lastSyncTime, isSyncing }) => {
   const [username, setUsername] = useState(profile.username || '');
   const [fullName, setFullName] = useState(profile.full_name || '');
+  const [location, setLocation] = useState(profile.location || '');
+  const [preparingForExam, setPreparingForExam] = useState(profile.preparing_for_exam || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [notifsEnabled, setNotifsEnabled] = useState('Notification' in window ? Notification.permission === 'granted' : false);
+
+  const handleToggleNotifs = async () => {
+    if (!('Notification' in window)) return;
+    
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      setNotifsEnabled(permission === 'granted');
+    } else {
+      // If already granted or denied, we just show current state
+      setNotifsEnabled(Notification.permission === 'granted');
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
     await onUpdate({
       username: username || null,
-      full_name: fullName || null
+      full_name: fullName || null,
+      location: location || null,
+      preparing_for_exam: preparingForExam || null
     });
     setIsSaving(false);
     onClose();
@@ -1534,57 +1565,109 @@ const ProfileModal: React.FC<{
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Username</label>
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-4 px-6 text-sm outline-none text-text-main font-bold"
-                placeholder="Choose a unique username"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Name</label>
-              <input 
-                type="text" 
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-4 px-6 text-sm outline-none text-text-main font-bold"
-                placeholder="Your display name"
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Username</label>
+                <input 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-3 px-5 text-sm outline-none text-text-main font-bold"
+                  placeholder="Choose a unique username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-3 px-5 text-sm outline-none text-text-main font-bold"
+                  placeholder="Your display name"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Location</label>
+                  <input 
+                    type="text" 
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-3 px-5 text-sm outline-none text-text-main font-bold"
+                    placeholder="e.g. India"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Target Exam</label>
+                  <input 
+                    type="text" 
+                    value={preparingForExam}
+                    onChange={(e) => setPreparingForExam(e.target.value)}
+                    className="w-full bg-bg-secondary border-2 border-transparent rounded-2xl focus:bg-white focus:border-accent transition-all py-3 px-5 text-sm outline-none text-text-main font-bold"
+                    placeholder="e.g. UPSC"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="pt-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-4 block text-center">Appearance</label>
-              <div className="flex items-center justify-between p-2 h-14 bg-bg-secondary rounded-2xl">
+            <div className="pt-4 space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block text-center">Settings & Preferences</label>
+              
+              <div className="flex items-center justify-between p-4 bg-bg-secondary rounded-2xl border border-border-main">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-black text-text-main">Dark Mode</p>
+                  <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">{darkMode ? 'Enabled' : 'Disabled'}</p>
+                </div>
                 <button 
-                  onClick={() => setDarkMode(false)}
-                  className={`flex-1 flex items-center justify-center gap-2 h-full rounded-xl transition-all font-bold text-xs ${!darkMode ? 'bg-white shadow-sm text-accent' : 'text-text-secondary'}`}
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="w-12 h-6 bg-border-main rounded-full relative transition-colors"
                 >
-                  <Sun size={14} /> Light
+                  <motion.div 
+                    animate={{ x: darkMode ? 24 : 0 }}
+                    className="absolute inset-0.5 w-5 h-5 bg-white rounded-full shadow-sm flex items-center justify-center text-[10px]"
+                  >
+                    {darkMode ? '🌙' : '☀️'}
+                  </motion.div>
                 </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-bg-secondary rounded-2xl border border-border-main">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-black text-text-main">Push Notifications</p>
+                  <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+                    {notifsEnabled ? 'Active' : 'Request Permission'}
+                  </p>
+                </div>
                 <button 
-                  onClick={() => setDarkMode(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 h-full rounded-xl transition-all font-bold text-xs ${darkMode ? 'bg-white shadow-sm text-accent' : 'text-text-secondary'}`}
+                  onClick={handleToggleNotifs}
+                  disabled={Notification.permission === 'denied'}
+                  className={`w-12 h-6 rounded-full relative transition-colors ${notifsEnabled ? 'bg-green-500' : 'bg-border-main'}`}
                 >
-                  <Moon size={14} /> Dark
+                  <motion.div 
+                    animate={{ x: notifsEnabled ? 24 : 0 }}
+                    className="absolute inset-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                  />
                 </button>
               </div>
             </div>
-          </div>
 
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full bg-accent text-white font-black py-4 rounded-2xl text-sm hover:shadow-xl hover:shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            {isSaving ? 'Saving...' : 'Update Account'}
-          </button>
-        </div>
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full bg-accent text-white font-black py-4 rounded-2xl text-sm hover:shadow-xl hover:shadow-accent/20 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Update Account'}
+            </button>
+
+            <button 
+              onClick={() => supabase.auth.signOut()}
+              className="w-full bg-bg-secondary text-red-500 font-black py-4 rounded-2xl text-sm flex items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-[0.98]"
+            >
+              <LogOut size={18} /> Logout
+            </button>
+          </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
   );
 };
 
@@ -1817,7 +1900,7 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
           <X size={24} />
         </button>
 
-        <div className="w-full h-[400px] sm:h-[500px] perspective-1000">
+        <div className="w-full h-[60vh] min-h-[350px] max-h-[600px] perspective-1000">
           <motion.div 
             onClick={() => setIsFlipped(!isFlipped)}
             animate={{ rotateY: isFlipped ? 180 : 0 }}
@@ -2059,7 +2142,7 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
           </div>
 
           {/* Card */}
-          <div className="perspective-1000 w-full h-[380px] sm:h-[500px]">
+          <div className="perspective-1000 w-full h-[60vh] min-h-[350px] max-h-[600px]">
             {showDeleteConfirm ? (
               <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }}

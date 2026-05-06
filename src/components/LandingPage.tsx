@@ -29,22 +29,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
   return (
     <div className="bg-bg-main text-text-main font-sans selection:bg-accent/20 transition-colors duration-300">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-bg-main/80 backdrop-blur-md border-b border-border-main py-4">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-2">
+      <nav className="fixed top-0 w-full z-50 bg-bg-main/80 backdrop-blur-md border-b border-border-main py-4 transition-all">
+        <div className="max-w-screen-2xl mx-auto px-6 flex justify-between items-center">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <Feather size={24} className="text-accent" />
             <span className="text-xl font-heading font-bold tracking-tight">ushanj <span className="text-accent underline decoration-accent/10">flashcards</span></span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button 
               onClick={onLogin}
-              className="px-4 py-2 text-text-main font-bold text-sm hover:text-accent transition-colors"
+              className="px-3 sm:px-4 py-2 text-text-main font-bold text-xs sm:text-sm hover:text-accent transition-colors"
             >
               Log in
             </button>
             <button 
               onClick={onSignup}
-              className="px-5 py-2 bg-accent text-white rounded-lg font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-md shadow-accent/10"
+              className="px-4 sm:px-5 py-2 bg-accent text-white rounded-lg font-bold text-xs sm:text-sm hover:brightness-110 active:scale-95 transition-all shadow-md shadow-accent/10"
             >
               Get Started Free
             </button>
@@ -54,7 +54,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Hero Section */}
       <header className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
+        <div className="max-w-screen-xl mx-auto text-center space-y-8">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -118,9 +118,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Problem Section */}
       <section className="py-24 bg-bg-secondary/30 border-y border-border-main px-6">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+        <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           <div>
-            <h2 className="text-3xl md:text-4xl font-heading font-bold mb-6 tracking-tight">The "Revision Gap" is real.</h2>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mb-6 tracking-tight">The "Revision Gap" is real.</h2>
             <p className="text-lg text-text-secondary font-medium leading-relaxed mb-8">
               Most students fail not because they don't study, but because they can't retain 
               the massive volume of information required for exams like UPSC or NEET.
@@ -161,8 +161,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Core Features */}
       <section className="py-24 px-6 bg-bg-main overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="max-w-screen-2xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <FeatureCard 
               icon={<Brain className="text-accent" />}
               title="Smart Organization"
@@ -218,8 +218,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Experience & Personalization */}
       <section className="py-24 px-6 bg-bg-main">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-          <div className="order-2 md:order-1 space-y-8">
+        <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          <div className="order-2 lg:order-1 space-y-8">
             <div className="flex gap-6 items-start">
               <div className="w-12 h-12 bg-bg-secondary rounded-xl flex items-center justify-center text-accent shrink-0 shadow-sm"><Moon size={24} /></div>
               <div className="space-y-1">
@@ -254,9 +254,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Trust & Reliability */}
       <section className="py-24 bg-text-main text-white px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12 text-center md:text-left">
+        <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-12 text-center lg:text-left">
           <div className="space-y-6 max-w-xl">
-            <div className="flex items-center justify-center md:justify-start gap-3 text-accent font-bold tracking-widest uppercase text-xs">
+            <div className="flex items-center justify-center lg:justify-start gap-3 text-accent font-bold tracking-widest uppercase text-xs">
               <ShieldCheck size={20} />
               Privacy & Security
             </div>
@@ -266,7 +266,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
               continue on your phone. Even works offline with automatic cloud sync when you're back.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+          <div className="grid grid-cols-2 gap-4 w-full lg:w-auto">
             <div className="p-6 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors group">
               <span className="text-white font-heading font-bold block text-xl group-hover:text-accent transition-colors">Cloud Sync</span>
               <p className="text-white/40 text-xs mt-1">Auto-save every card</p>
@@ -281,9 +281,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Use Cases */}
       <section className="py-24 bg-bg-main px-6">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-screen-2xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-center mb-16 tracking-tight">Built for you.</h2>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <UseCase 
               title="UPSC Aspirant"
               desc="Mastering static subjects like History and Polity. Categorize by GS papers and track long-term retention."
@@ -305,9 +305,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
 
       {/* Workflow Section */}
       <section id="how-it-works" className="py-24 bg-bg-secondary/30 px-6 overflow-hidden scroll-mt-20">
-        <div className="max-w-7xl mx-auto text-center space-y-16">
+        <div className="max-w-screen-2xl mx-auto text-center space-y-16">
           <h2 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">How it works.</h2>
-          <div className="grid md:grid-cols-4 gap-8 relative">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
             <WorkflowStep num={1} title="Group by Subject" desc="Create subjects and decks based on your syllabus." />
             <WorkflowStep num={2} title="Add Flashcards" desc="Input questions and answers using the Quick Add console." />
             <WorkflowStep num={3} title="Study Daily" desc="Run session-based reviews using keyboard shortcuts." />
