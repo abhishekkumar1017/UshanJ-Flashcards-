@@ -127,7 +127,9 @@ async function startServer() {
 
       // --- Invalidate Cache ---
       // We invalidate the specific resource for this user
-      const cacheKey = redisService.generateKey(userId, table);
+      // Note: mapping 'profiles' table to 'profile' resource key if needed
+      const resourceKey = table === 'profiles' ? 'profile' : table;
+      const cacheKey = redisService.generateKey(userId, resourceKey);
       await redisService.del(cacheKey);
       console.log(`Cache Invalidated: ${cacheKey}`);
 

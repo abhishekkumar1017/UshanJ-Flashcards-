@@ -39,6 +39,7 @@ export interface LocalProfile {
   full_name: string | null;
   location?: string | null;
   preparing_for_exam?: string | null;
+  study_sessions: number;
   created_at: string;
   sync_status: SyncStatus;
 }

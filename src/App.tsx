@@ -32,7 +32,7 @@ import { useStudyTracker } from './hooks/useStudyTracker';
 import { Auth } from './components/Auth';
 import { LandingPage } from './components/LandingPage';
 import { MasteryLevel, Subject, Deck, Flashcard, Profile } from './types';
-import { getGlobalStats, incrementMasteredCount, incrementSessionCount, GlobalStats } from './services/statsService';
+import { getGlobalStats, incrementSessionCount, GlobalStats } from './services/statsService';
 
 // --- Types ---
 type SortCriteria = 'created_at' | 'mastery_level' | 'alphabetical';
@@ -172,14 +172,16 @@ export default function App() {
 
   useEffect(() => {
     const fetchGlobalStats = async () => {
-      const stats = await getGlobalStats();
-      setGlobalStats(stats);
+      if (user?.id) {
+        const stats = await getGlobalStats(user.id);
+        setGlobalStats(stats);
+      }
     };
     fetchGlobalStats();
     // Refresh every minute
     const interval = setInterval(fetchGlobalStats, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]);
 
   const addToast = (message: string) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -392,7 +394,7 @@ export default function App() {
     setStudyCards([...cards]);
     setCurrentStudyIndex(0);
     setIsStudyModalOpen(true);
-    incrementSessionCount();
+    incrementSessionCount(user?.id);
   };
 
   const shuffleStudySession = () => {
@@ -418,9 +420,6 @@ export default function App() {
         mastery_level: newMastery, 
         last_reviewed: new Date().toISOString() 
       });
-      if (rating === 'Easy') {
-        incrementMasteredCount();
-      }
     } catch (error) {
       console.error('Error rating card:', error);
       throw error;
@@ -432,6 +431,12 @@ export default function App() {
     
     try {
       await handleRateCardById(currentCard.id, currentCard.mastery_level, rating);
+      
+      // Refresh stats
+      if (user?.id) {
+        const stats = await getGlobalStats(user.id);
+        setGlobalStats(stats);
+      }
 
       if (currentStudyIndex < studyCards.length - 1) {
         setCurrentStudyIndex(prev => prev + 1);

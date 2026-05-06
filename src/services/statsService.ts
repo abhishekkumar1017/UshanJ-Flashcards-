@@ -1,37 +1,49 @@
+import { db } from '../db';
+
 export interface GlobalStats {
   mastered: number;
   studySessions: number;
 }
 
-// Simulated Redis using localStorage for Demo Mode
-const STATS_KEY = 'demo_global_stats';
-
-function getOrInitStats(): GlobalStats {
-  const saved = localStorage.getItem(STATS_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to parse stats', e);
-    }
+export async function getGlobalStats(userId: string | undefined): Promise<GlobalStats> {
+  if (!userId) {
+    return { mastered: 0, studySessions: 0 };
   }
-  return { mastered: 42, studySessions: 124 }; // Standard demo initial state
+
+  try {
+    // Count mastered flashcards
+    const masteredCount = await db.flashcards
+      .where('mastery_level')
+      .equals('Mastered')
+      .and(card => card.user_id === userId)
+      .count();
+
+    // Get study sessions from profile
+    const profile = await db.profiles.get(userId);
+    const sessionCount = profile?.study_sessions || 0;
+
+    return {
+      mastered: masteredCount,
+      studySessions: sessionCount
+    };
+  } catch (err) {
+    console.error('Error fetching global stats:', err);
+    return { mastered: 0, studySessions: 0 };
+  }
 }
 
-export async function getGlobalStats(): Promise<GlobalStats> {
-  // Simulate network latency
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return getOrInitStats();
-}
+export async function incrementSessionCount(userId: string | undefined): Promise<void> {
+  if (!userId) return;
 
-export async function incrementMasteredCount(): Promise<void> {
-  const stats = getOrInitStats();
-  stats.mastered += 1;
-  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-}
-
-export async function incrementSessionCount(): Promise<void> {
-  const stats = getOrInitStats();
-  stats.studySessions += 1;
-  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  try {
+    const profile = await db.profiles.get(userId);
+    if (profile) {
+      await db.profiles.update(userId, {
+        study_sessions: (profile.study_sessions || 0) + 1,
+        sync_status: 'pending_update'
+      });
+    }
+  } catch (err) {
+    console.error('Error incrementing session count:', err);
+  }
 }

@@ -260,17 +260,18 @@ export function useStudyTracker(user: User | null) {
     const demoCardId = crypto.randomUUID();
     const demoCard: LocalFlashcard = {
       id: demoCardId,
-      front: "What is Ushanj Flashcards?",
-      back: `Ushanj Flashcards is your complete preparation partner — built for every student, built for you.
-Created by Abhishek Kumar, Ushanj Flashcards was born from one simple belief: you don’t just need more content — you need better systems. Systems that help them stay organized, track real progress, and revise effectively, all the way to exam day.
-Today, Ushanj Flashcards offers three powerful platforms to support your entire preparation journey:
-Ushanj Flashcards.com is a full-featured web app with dedicated tracking tools built for you. From structured syllabus coverage to progress dashboards, it gives you everything you need to plan, track, and complete your preparation — all in one place.
-Ushanj Flashcards Notion Templates bring the same preparation-first philosophy to Notion — giving you ready-to-use study planners, revision trackers, and exam dashboards that you can customize to your own workflow and schedule.
-Ushanj Flashcards is a dedicated flashcard platform built specifically for your learning — helping you retain more in less time through active recall and spaced repetition.
-Whether you’re preparing for UPSC, SSC, NEET, JEE, Banking, Defence, or any other exam, Ushanj Flashcards meets you where you are and gives you the tools to go further.
-Three platforms. One preparation partner. Built for you.
+      front: "What is UshanJ",
+      back: `UshanJ is a complete study ecosystem designed for serious aspirants, helping them plan, track, and master their preparation across multiple platforms.
 
-Check out our YouTube channel for more tips and guidance!`,
+It brings together:
+
+* UshanJ Webapp – a smart preparation tracker to organize subjects, manage tasks, and follow spaced revision
+* UshanJ Flashcards – a focused tool to create and practice flashcards for active recall
+* UshanJ Notion Templates – ready-to-use systems to structure study, habits, and productivity
+
+In short, UshanJ helps students stay organized, consistent, and exam-ready in one connected system.
+
+Search UshanJ on youtube to get the youtube channel`,
       deck_id: id,
       subject_id,
       tags: ["demo", "welcome"],
@@ -339,6 +340,9 @@ Check out our YouTube channel for more tips and guidance!`,
         id: userId,
         username: updates.username || null,
         full_name: updates.full_name || null,
+        study_sessions: updates.study_sessions || 0,
+        preparing_for_exam: updates.preparing_for_exam || null,
+        location: updates.location || null,
         created_at: new Date().toISOString(),
         sync_status: isGuest ? 'synced' : 'pending_update'
       });
