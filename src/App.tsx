@@ -591,9 +591,7 @@ export default function App() {
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border-main transition-colors">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-10 h-10 bg-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-accent/20 group-hover:rotate-12 transition-transform">
-              <Feather size={24} />
-            </div>
+            <Feather size={32} className="text-accent group-hover:rotate-12 transition-transform" />
             <h1 className="text-xl sm:text-2xl font-black tracking-tighter">
               <span className="text-accent">ushanj</span> <span className="text-text-main">flashcards</span>
             </h1>
@@ -1835,8 +1833,8 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
               <div className="mb-10 shrink-0">
                 <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/10 px-5 py-2 rounded-full">Question</span>
               </div>
-              <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
-                <p className="text-2xl sm:text-3xl font-black leading-tight text-text-main tracking-tight whitespace-pre-wrap">{card.front}</p>
+              <div className="w-full flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-2xl sm:text-3xl font-black leading-tight text-text-main tracking-tight whitespace-pre-wrap my-auto">{card.front}</p>
               </div>
               <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
                 <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white shadow-lg shadow-accent/20 animate-bounce">
@@ -1855,8 +1853,8 @@ const DetailCardModal: React.FC<DetailCardModalProps> = ({ card, onClose, onEdit
               <div className="mb-10 shrink-0">
                 <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-bg-card px-5 py-2 rounded-full border border-accent/20">Answer</span>
               </div>
-              <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
-                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
+              <div className="w-full flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 custom-scrollbar">
+                <p className="text-lg sm:text-xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight my-auto">{card.back}</p>
               </div>
               <div className="mt-12 shrink-0 flex flex-col items-center gap-3">
                 <p className="text-[10px] text-accent font-black uppercase tracking-widest">Mastered this card?</p>
@@ -2142,8 +2140,8 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   <div className="mb-10 shrink-0">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-accent/10 px-5 py-2 rounded-full">Question</span>
                   </div>
-                  <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-text-main mx-auto whitespace-pre-wrap">{card.front}</p>
+                  <div className="w-full flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-text-main mx-auto whitespace-pre-wrap my-auto">{card.front}</p>
                   </div>
                   <div className="mt-12 flex flex-col items-center gap-4 shrink-0">
                     <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white shadow-lg shadow-accent/20 animate-bounce">
@@ -2158,8 +2156,8 @@ const StudyModal: React.FC<StudyModalProps> = ({ cards, currentIndex, onClose, o
                   <div className="mb-10 shrink-0">
                     <span className="text-[10px] uppercase tracking-[0.2em] text-accent font-black bg-bg-card px-5 py-2 rounded-full border border-accent/20">Answer</span>
                   </div>
-                  <div className="w-full flex-1 flex items-center justify-center overflow-y-auto px-4 custom-scrollbar">
-                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight">{card.back}</p>
+                  <div className="w-full flex-1 flex flex-col items-center justify-start overflow-y-auto px-4 custom-scrollbar">
+                    <p className="text-lg sm:text-2xl leading-relaxed whitespace-pre-wrap text-text-main font-bold tracking-tight my-auto">{card.back}</p>
                   </div>
                   <div className="mt-12 flex flex-col items-center gap-4 shrink-0">
                     <p className="text-[10px] text-accent font-black uppercase tracking-widest opacity-50">Mastered?</p>

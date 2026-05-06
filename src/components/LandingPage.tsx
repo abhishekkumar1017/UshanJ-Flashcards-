@@ -15,7 +15,8 @@ import {
   Clock,
   History,
   Smartphone,
-  Quote
+  Quote,
+  Feather
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -31,7 +32,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSignup, onLogin }) =
       <nav className="fixed top-0 w-full z-50 bg-bg-main/80 backdrop-blur-md border-b border-border-main py-4">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-white font-black shadow-lg shadow-accent/20">U</div>
+            <Feather size={24} className="text-accent" />
             <span className="text-xl font-heading font-bold tracking-tight">ushanj <span className="text-accent underline decoration-accent/10">flashcards</span></span>
           </div>
           <div className="flex items-center gap-4">

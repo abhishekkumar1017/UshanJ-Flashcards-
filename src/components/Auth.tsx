@@ -85,8 +85,8 @@ export const Auth: React.FC<AuthProps> = ({ onSuccess, initialMode = 'login' }) 
         className="w-full max-w-md space-y-8 bg-bg-card p-8 rounded-3xl shadow-2xl border border-border-main"
       >
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center text-white mx-auto shadow-xl shadow-accent/20">
-            <span className="text-3xl font-heading font-black">U</span>
+          <div className="w-16 h-16 flex items-center justify-center text-accent mx-auto">
+            <Feather size={48} />
           </div>
           <div>
             <h1 className="text-3xl font-heading font-bold text-text-main tracking-tight">
